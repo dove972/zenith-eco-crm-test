@@ -1,0 +1,124 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Charte ZENITH ECO V4 — fond gris clair, cartes blanches */
+    --background: 30 8% 94%;
+    --foreground: 0 0% 20%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 20%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 20%;
+
+    --primary: 29 100% 49%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 0 0% 27%;
+    --secondary-foreground: 0 0% 100%;
+
+    --muted: 30 5% 90%;
+    --muted-foreground: 0 0% 45%;
+
+    --accent: 30 10% 96%;
+    --accent-foreground: 29 100% 38%;
+
+    --destructive: 2 74% 55%;
+    --destructive-foreground: 0 0% 100%;
+
+    --success: 123 37% 45%;
+    --success-foreground: 0 0% 100%;
+
+    --warning: 33 95% 59%;
+    --warning-foreground: 0 0% 100%;
+
+    --border: 30 5% 88%;
+    --input: 30 5% 88%;
+    --ring: 29 100% 49%;
+    --radius: 14px;
+  }
+
+  .dark {
+    --background: 0 0% 7%;
+    --foreground: 0 0% 93%;
+    --card: 0 0% 10%;
+    --card-foreground: 0 0% 93%;
+    --popover: 0 0% 10%;
+    --popover-foreground: 0 0% 93%;
+    --primary: 29 100% 52%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 0 0% 18%;
+    --secondary-foreground: 0 0% 93%;
+    --muted: 0 0% 15%;
+    --muted-foreground: 0 0% 55%;
+    --accent: 29 30% 14%;
+    --accent-foreground: 29 100% 65%;
+    --destructive: 2 62% 30%;
+    --destructive-foreground: 0 0% 93%;
+    --success: 123 37% 32%;
+    --success-foreground: 0 0% 100%;
+    --warning: 33 80% 42%;
+    --warning-foreground: 0 0% 100%;
+    --border: 0 0% 18%;
+    --input: 0 0% 18%;
+    --ring: 29 100% 52%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    line-height: 1.65;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-outfit), 'Outfit', system-ui, sans-serif;
+    color: #464646;
+    letter-spacing: -0.01em;
+  }
+
+  ::selection {
+    background: rgba(250, 120, 0, 0.15);
+  }
+
+  :focus-visible {
+    @apply outline-none ring-2 ring-ring/30 ring-offset-2 ring-offset-background;
+  }
+
+  input[type="number"]::-webkit-inner-spin-button,
+  input[type="number"]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+}
+
+@layer utilities {
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(0,0,0,0.1) transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 5px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background-color: rgba(0,0,0,0.1);
+    border-radius: 3px;
+  }
+}

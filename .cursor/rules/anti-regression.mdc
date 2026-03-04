@@ -1,0 +1,29 @@
+---
+description: Prevents regressions when modifying existing code
+alwaysApply: true
+---
+
+# Anti-Régression
+
+## Avant toute modification de code existant
+
+1. **Lire le fichier entier** avant de modifier quoi que ce soit
+2. **Identifier les tests existants** liés au code modifié
+3. **Ne jamais supprimer** un test existant sans justification explicite de l'utilisateur
+4. **Vérifier les imports** : ne pas supprimer d'imports utilisés ailleurs
+
+## Règles strictes
+
+- Ne jamais changer la signature d'une fonction publique sans vérifier tous ses appelants
+- Ne jamais modifier un type/interface sans mettre à jour tous les fichiers qui l'utilisent
+- Toujours vérifier les effets de bord : si une fonction est utilisée dans 5 fichiers, les 5 doivent rester fonctionnels
+- Lancer `npm run build` ou `npx tsc --noEmit` après les changements pour vérifier la compilation
+
+## Checklist avant commit
+
+```
+- [ ] Les tests existants passent toujours
+- [ ] Aucun import cassé
+- [ ] Aucune fonction supprimée qui est encore utilisée
+- [ ] Les types sont cohérents
+```

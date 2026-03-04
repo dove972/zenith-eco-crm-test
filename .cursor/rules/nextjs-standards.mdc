@@ -1,0 +1,47 @@
+---
+description: Next.js App Router conventions and best practices
+globs: "**/*.{ts,tsx,js,jsx}"
+alwaysApply: false
+---
+
+# Standards Next.js (App Router)
+
+## Structure des fichiers
+
+```
+src/
+├── app/                    # Routes (App Router)
+│   ├── (auth)/            # Groupe de routes auth
+│   ├── (dashboard)/       # Groupe de routes dashboard
+│   ├── api/               # API Routes
+│   ├── layout.tsx         # Layout racine
+│   └── page.tsx           # Page d'accueil
+├── components/
+│   ├── ui/                # Composants UI réutilisables (Button, Input, Modal)
+│   └── features/          # Composants métier (ContactList, DealPipeline)
+├── lib/                   # Utilitaires, config DB, helpers
+├── hooks/                 # Custom hooks React
+├── types/                 # Types TypeScript partagés
+└── styles/                # Styles globaux
+```
+
+## Conventions
+
+- Utiliser les Server Components par défaut
+- Ajouter `'use client'` uniquement quand nécessaire (interactivité, hooks React)
+- Utiliser `loading.tsx` pour les états de chargement
+- Utiliser `error.tsx` pour la gestion d'erreurs par route
+- Utiliser `not-found.tsx` pour les pages 404 personnalisées
+
+## Data Fetching
+
+- Server Components : fetch directement dans le composant
+- Client Components : utiliser SWR ou React Query
+- API Routes : toujours valider les inputs (zod recommandé)
+
+## Performance
+
+- Utiliser `next/image` pour toutes les images
+- Utiliser `next/link` pour la navigation interne
+- Utiliser `next/font` pour les polices
+- Implémenter le lazy loading pour les composants lourds

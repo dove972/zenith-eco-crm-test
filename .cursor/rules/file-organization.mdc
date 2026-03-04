@@ -1,0 +1,34 @@
+---
+description: File naming and organization conventions
+alwaysApply: true
+---
+
+# Organisation des Fichiers
+
+## Nommage
+
+| Type | Convention | Exemple |
+|------|-----------|---------|
+| Composants React | PascalCase | `ContactCard.tsx` |
+| Hooks | camelCase avec prefix `use` | `useContacts.ts` |
+| Utilitaires | camelCase | `formatDate.ts` |
+| Types/Interfaces | PascalCase | `Contact.ts` |
+| API Routes | kebab-case (dossiers) | `app/api/contacts/route.ts` |
+| Constantes | SCREAMING_SNAKE_CASE | `MAX_CONTACTS_PER_PAGE` |
+
+## Règles
+
+- Un composant React par fichier
+- Colocate : garder les tests à côté du code (`Component.test.tsx`)
+- Colocate : garder les styles à côté du composant si spécifiques
+- Les fichiers de plus de 200 lignes doivent être découpés
+- Pas de fichier `utils.ts` fourre-tout : créer des fichiers spécifiques (`dateUtils.ts`, `stringUtils.ts`)
+
+## Imports
+
+- Utiliser des alias de chemins (`@/` pour `src/`)
+- Ordre des imports :
+  1. Modules externes (react, next)
+  2. Modules internes absolus (@/components, @/lib)
+  3. Modules relatifs (./Component)
+  4. Styles

@@ -1,0 +1,33 @@
+---
+description: Prevents code duplication and enforces DRY principle
+alwaysApply: true
+---
+
+# Pas de Code Dupliqué (DRY)
+
+## Avant de créer une fonction
+
+1. **Chercher dans la codebase** si une fonction similaire existe déjà (utiliser grep/search)
+2. **Vérifier les utilitaires** dans `src/lib/`, `src/utils/`, `src/helpers/`
+3. Si une fonction similaire existe, **l'étendre** plutôt qu'en créer une nouvelle
+
+## Patterns à éviter
+
+```typescript
+// MAUVAIS : logique dupliquée
+function formatUserName(user) { return `${user.firstName} ${user.lastName}` }
+function displayName(person) { return `${person.firstName} ${person.lastName}` }
+
+// BON : une seule fonction réutilisable
+function formatFullName(entity: { firstName: string; lastName: string }) {
+  return `${entity.firstName} ${entity.lastName}`;
+}
+```
+
+## Règles
+
+- Extraire les constantes partagées dans un fichier `constants.ts`
+- Extraire les types partagés dans un fichier `types.ts`
+- Extraire les hooks réutilisables dans `src/hooks/`
+- Extraire les composants UI réutilisables dans `src/components/ui/`
+- Maximum 3 occurrences d'un pattern avant extraction obligatoire

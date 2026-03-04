@@ -1,0 +1,47 @@
+---
+description: Git commit and branch naming conventions
+alwaysApply: true
+---
+
+# Conventions Git
+
+## Format des commits
+
+```
+type(scope): description courte
+
+Corps optionnel avec plus de détails
+```
+
+### Types autorisés
+
+| Type | Quand l'utiliser |
+|------|-----------------|
+| `feat` | Nouvelle fonctionnalité |
+| `fix` | Correction de bug |
+| `refactor` | Restructuration sans changement de comportement |
+| `style` | Formatage, points-virgules, etc. |
+| `docs` | Documentation uniquement |
+| `test` | Ajout ou modification de tests |
+| `chore` | Maintenance, dépendances, config |
+
+### Exemples
+
+```
+feat(contacts): add search filter by company name
+fix(auth): resolve session expiration redirect loop
+refactor(api): extract validation logic into middleware
+```
+
+## Branches
+
+- `main` : production, toujours stable
+- `develop` : branche de développement
+- `feat/nom-feature` : nouvelle fonctionnalité
+- `fix/nom-bug` : correction de bug
+
+## Règles strictes
+
+- JAMAIS de force push sur `main` ou `develop`
+- JAMAIS committer de fichiers sensibles (.env, credentials, clés API)
+- Un commit = un changement logique cohérent

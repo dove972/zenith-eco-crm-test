@@ -1,0 +1,42 @@
+---
+description: Standards for safe deployment on Vercel and Render
+alwaysApply: true
+---
+
+# Standards de Déploiement
+
+## Secrets et Variables d'Environnement
+
+- **JAMAIS committer** de fichier `.env`, `.env.local`, `.env.production`
+- Toujours maintenir un `.env.example` avec les clés (sans les valeurs)
+- Utiliser `process.env.VARIABLE_NAME` pour accéder aux variables
+- Valider les variables d'environnement au démarrage de l'app
+
+```typescript
+// src/lib/env.ts - Validation des variables d'environnement
+const requiredVars = ['DATABASE_URL', 'NEXTAUTH_SECRET'] as const;
+
+for (const varName of requiredVars) {
+  if (!process.env[varName]) {
+    throw new Error(`Missing required env var: ${varName}`);
+  }
+}
+```
+
+## Vercel
+
+- Toujours avoir un `vercel.json` si des configs custom sont nécessaires
+- Utiliser les fonctions serverless pour les API routes
+- Configurer les headers de sécurité
+
+## Render
+
+- Maintenir un `render.yaml` pour l'infrastructure as code
+- Spécifier la version de Node.js
+- Configurer les health checks
+
+## Build
+
+- Le build (`npm run build`) doit toujours passer AVANT le déploiement
+- Pas de `// @ts-ignore` ou `// @ts-nocheck` sans justification
+- Pas de `eslint-disable` global

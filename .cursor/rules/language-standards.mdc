@@ -1,0 +1,35 @@
+---
+description: Language and communication standards
+alwaysApply: true
+---
+
+# Standards de Langue
+
+## Communication
+
+- Toujours répondre en **français** à l'utilisateur
+- Les messages d'erreur côté UI doivent être en **français** pour l'utilisateur final
+
+## Code
+
+- Noms de variables, fonctions, classes : en **anglais**
+- Commentaires dans le code : en **anglais** (standard international)
+- Messages de commit : en **anglais** (convention standard)
+- Documentation technique (README, JSDoc) : en **anglais**
+
+## Exemples
+
+```typescript
+// BON
+const contactList = await fetchContacts();
+const isActive = contact.status === 'active';
+
+// MAUVAIS
+const listeContacts = await recupererContacts();
+const estActif = contact.statut === 'actif';
+```
+
+## UI / UX
+
+- Labels, boutons, messages : en **français** pour l'utilisateur
+- Utiliser un système d'internationalisation (i18n) si multi-langue prévu
