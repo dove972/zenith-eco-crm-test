@@ -218,7 +218,7 @@ export default function LoginPage() {
                     Connexion
                   </h1>
                   <p className="text-sm text-[#888] mt-1">
-                    Accédez à votre espace professionnel
+                    Bienvenue ! Connectez-vous à votre espace
                   </p>
                 </div>
 
@@ -298,7 +298,7 @@ export default function LoginPage() {
           </div>
 
           <p className="mt-8 text-center text-[11px] text-[#ccc] font-medium">
-            ZENITH ECO by ENR FREE — Groupe GDU Holding
+            ZENITH ECO by ENR FREE — v2.0 Martinique
           </p>
         </div>
       </div>
