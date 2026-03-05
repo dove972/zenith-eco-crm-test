@@ -233,7 +233,6 @@ export default function NewSimulationPage() {
           mpr_client_type: result.mpr_client_type,
           mpr_account_amount: wizardData.eligibility.mpr_account_amount,
           commercial_id: profile.id,
-          comments: wizardData.client.comments ?? "",
         })
         .select("id")
         .single();
@@ -289,9 +288,16 @@ export default function NewSimulationPage() {
       }
 
       router.push(`${basePath}/${simulation.id}`);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("Erreur lors de la sauvegarde:", error);
-      alert("Erreur lors de la sauvegarde : " + (error instanceof Error ? error.message : String(error)));
+      let msg = "Erreur inconnue";
+      if (error instanceof Error) {
+        msg = error.message;
+      } else if (error && typeof error === "object" && "message" in error) {
+        const e = error as { message: string; code?: string; details?: string };
+        msg = `${e.message}${e.code ? ` (code: ${e.code})` : ""}${e.details ? ` — ${e.details}` : ""}`;
+      }
+      alert("Erreur lors de la sauvegarde :\n" + msg);
     } finally {
       setSaving(false);
     }
