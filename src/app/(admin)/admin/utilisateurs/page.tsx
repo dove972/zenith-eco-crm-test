@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Plus, Pencil, Loader2, Users } from "lucide-react";
+import { Plus, Pencil, Loader2, Users, KeyRound, X } from "lucide-react";
 import type { UserRole } from "@/types/database";
 
 const ROLE_LABELS: Record<UserRole, string> = {
@@ -65,6 +65,12 @@ export default function UtilisateursPage() {
   const [saving, setSaving] = useState(false);
   const [togglingId, setTogglingId] = useState<string | null>(null);
 
+  // Password change state
+  const [passwordUser, setPasswordUser] = useState<Profile | null>(null);
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [changingPassword, setChangingPassword] = useState(false);
+
   const supabase = createClient();
 
   const managers = users.filter((u) => u.role === "manager");
@@ -121,6 +127,69 @@ export default function UtilisateursPage() {
     setFormData((prev) => ({ ...prev, [field]: value }));
   }
 
+  // Open password change dialog
+  function openPasswordDialog(user: Profile) {
+    setPasswordUser(user);
+    setNewPassword("");
+    setConfirmPassword("");
+  }
+
+  function closePasswordDialog() {
+    setPasswordUser(null);
+    setNewPassword("");
+    setConfirmPassword("");
+  }
+
+  async function handleChangePassword(e: React.FormEvent) {
+    e.preventDefault();
+
+    if (!passwordUser) return;
+
+    if (newPassword.length < 6) {
+      toast.error("Le mot de passe doit contenir au moins 6 caractères");
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      toast.error("Les mots de passe ne correspondent pas");
+      return;
+    }
+
+    setChangingPassword(true);
+    try {
+      const session = await supabase.auth.getSession();
+      const token = session.data.session?.access_token;
+
+      const res = await fetch("/api/admin/users/password", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          userId: passwordUser.id,
+          password: newPassword,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        toast.error(data.error || "Erreur lors du changement de mot de passe");
+        return;
+      }
+
+      toast.success(
+        `Mot de passe modifié pour ${passwordUser.first_name} ${passwordUser.last_name}`
+      );
+      closePasswordDialog();
+    } catch {
+      toast.error("Erreur lors du changement de mot de passe");
+    } finally {
+      setChangingPassword(false);
+    }
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
@@ -149,32 +218,41 @@ export default function UtilisateursPage() {
           return;
         }
 
-        const { data: userId, error: rpcError } = await supabase.rpc(
-          "admin_create_user",
-          {
-            p_email: formData.email,
-            p_password: formData.password || "",
-            p_first_name: formData.first_name,
-            p_last_name: formData.last_name,
-            p_role: formData.role,
-            p_phone: formData.phone || null,
-            p_manager_id: formData.manager_id || null,
-          }
-        );
+        // Utiliser l'API route server-side qui a le service_role key
+        const session = await supabase.auth.getSession();
+        const token = session.data.session?.access_token;
 
-        if (rpcError) {
-          const msg = rpcError.message?.includes("existe déjà")
+        const res = await fetch("/api/admin/users", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            email: formData.email,
+            password: formData.password || "TempPass123!",
+            first_name: formData.first_name,
+            last_name: formData.last_name,
+            role: formData.role,
+            phone: formData.phone || null,
+            manager_id: formData.manager_id || null,
+          }),
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          const msg = data.error?.includes("already been registered")
             ? "Un utilisateur avec cet email existe déjà"
-            : rpcError.message || "Erreur lors de la création";
+            : data.error || "Erreur lors de la création";
           toast.error(msg);
           return;
         }
+
         toast.success("Utilisateur créé avec succès");
 
         // Envoyer l'email d'invitation
         try {
-          const session = await supabase.auth.getSession();
-          const token = session.data.session?.access_token;
           const emailRes = await fetch("/api/email/send-invitation", {
             method: "POST",
             headers: {
@@ -261,6 +339,74 @@ export default function UtilisateursPage() {
           Inviter un utilisateur
         </Button>
       </div>
+
+      {/* Password change dialog */}
+      {passwordUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <Card className="w-full max-w-md mx-4">
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle className="text-lg">
+                Changer le mot de passe
+              </CardTitle>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={closePasswordDialog}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </CardHeader>
+            <CardContent>
+              <p className="mb-4 text-sm text-muted-foreground">
+                {passwordUser.first_name} {passwordUser.last_name}
+              </p>
+              <form onSubmit={handleChangePassword} className="space-y-4">
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium">
+                    Nouveau mot de passe
+                  </label>
+                  <Input
+                    type="password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="Minimum 6 caractères"
+                    required
+                    minLength={6}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium">
+                    Confirmer le mot de passe
+                  </label>
+                  <Input
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="Retapez le mot de passe"
+                    required
+                    minLength={6}
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <Button type="submit" disabled={changingPassword}>
+                    {changingPassword && (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    )}
+                    Changer le mot de passe
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={closePasswordDialog}
+                  >
+                    Annuler
+                  </Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {showForm && (
         <Card>
@@ -489,13 +635,24 @@ export default function UtilisateursPage() {
                                 </button>
                               </td>
                               <td className="px-4 py-3 text-right">
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => openEditForm(user)}
-                                >
-                                  <Pencil className="h-4 w-4" />
-                                </Button>
+                                <div className="flex items-center justify-end gap-1">
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => openPasswordDialog(user)}
+                                    title="Changer le mot de passe"
+                                  >
+                                    <KeyRound className="h-4 w-4" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => openEditForm(user)}
+                                    title="Modifier"
+                                  >
+                                    <Pencil className="h-4 w-4" />
+                                  </Button>
+                                </div>
                               </td>
                             </tr>
                           ))}
