@@ -41,22 +41,21 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: authError.message }, { status: 400 });
   }
 
-  // Update profile with ALL fields (phone, manager_id) via service role
-  // The trigger handle_new_user() already created the base profile row
+  // Upsert profile: the trigger may or may not have created it
   if (authData.user) {
-    const updateData: Record<string, unknown> = {
-      first_name: body.first_name,
-      last_name: body.last_name,
-      role: body.role,
+    const profileData: Record<string, unknown> = {
+      id: authData.user.id,
+      first_name: body.first_name || "",
+      last_name: body.last_name || "",
+      role: body.role || "commercial",
     };
 
-    if (body.phone) updateData.phone = body.phone;
-    if (body.manager_id) updateData.manager_id = body.manager_id;
+    if (body.phone) profileData.phone = body.phone;
+    if (body.manager_id) profileData.manager_id = body.manager_id;
 
     await adminClient
       .from("profiles")
-      .update(updateData)
-      .eq("id", authData.user.id);
+      .upsert(profileData, { onConflict: "id" });
   }
 
   return NextResponse.json({ success: true, data: authData.user });
