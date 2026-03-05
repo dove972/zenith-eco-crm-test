@@ -13,8 +13,6 @@ import {
   Loader2,
   CreditCard,
   Gift,
-  Plus,
-  Trash2,
 } from "lucide-react";
 
 interface PaymentEntry {
@@ -38,11 +36,10 @@ interface StepResultProps {
 }
 
 const PAYMENT_MODES = [
-  { value: "comptant", label: "Comptant" },
-  { value: "multipaiement", label: "Multi-paiement" },
-  { value: "financement", label: "Financement" },
-  { value: "cheque", label: "Chèque" },
-  { value: "especes", label: "Espèces" },
+  { value: "credit_moderne", label: "Crédit Moderne" },
+  { value: "fonds_propres_banque", label: "Fonds propres (Banque)" },
+  { value: "fonds_propres_cheque", label: "Fonds propres (Chèque)" },
+  { value: "virement", label: "Virement" },
 ] as const;
 
 const DURATION_OPTIONS = [
@@ -56,12 +53,13 @@ export default function StepResult({
   onSave,
   saving,
 }: StepResultProps) {
-  const [paymentMode, setPaymentMode] = useState("financement");
+  const [paymentMode, setPaymentMode] = useState("credit_moderne");
   const [reportType, setReportType] = useState<"30j" | "90j">("90j");
   const [financingMonths, setFinancingMonths] = useState(180);
   const [depositAmount, setDepositAmount] = useState(0);
-  const [payments, setPayments] = useState<PaymentEntry[]>([]);
   const [withPrimes, setWithPrimes] = useState(false);
+  const [nbCheques, setNbCheques] = useState(1);
+  const [nbVirements, setNbVirements] = useState(1);
 
   const primes = [
     { label: "CEE BAR-EN-106", amount: result.prime_cee_106 },
@@ -79,7 +77,7 @@ export default function StepResult({
   const amountToFinance = Math.max(0, displayedTotal - depositAmount);
 
   const financing = useMemo(() => {
-    if (paymentMode !== "financement" || amountToFinance <= 0) return null;
+    if (paymentMode !== "credit_moderne" || amountToFinance <= 0) return null;
     return calculateMonthlyPayment(
       amountToFinance,
       reportType,
@@ -88,44 +86,24 @@ export default function StepResult({
     );
   }, [paymentMode, amountToFinance, reportType, financingMonths, creditRates]);
 
-  const totalPaid = payments.reduce((s, p) => s + p.amount, 0);
-  const multiResteACharge = Math.max(0, displayedTotal - totalPaid);
-
-  function addPaymentRow() {
-    setPayments((prev) => [
-      ...prev,
-      { label: `Paiement ${prev.length + 1}`, amount: 0 },
-    ]);
-  }
-
-  function removePaymentRow(index: number) {
-    setPayments((prev) => prev.filter((_, i) => i !== index));
-  }
-
-  function updatePayment(
-    index: number,
-    field: keyof PaymentEntry,
-    value: string | number
-  ) {
-    setPayments((prev) =>
-      prev.map((p, i) =>
-        i === index
-          ? {
-              ...p,
-              [field]: field === "amount" ? Number(value) || 0 : value,
-            }
-          : p
-      )
-    );
-  }
-
   function handleSave() {
+    const payments: PaymentEntry[] = [];
+    if (paymentMode === "fonds_propres_cheque") {
+      for (let i = 0; i < nbCheques; i++) {
+        payments.push({ label: `Chèque ${i + 1}`, amount: Math.round(displayedTotal / nbCheques) });
+      }
+    } else if (paymentMode === "virement") {
+      for (let i = 0; i < nbVirements; i++) {
+        payments.push({ label: `Virement ${i + 1}`, amount: Math.round(displayedTotal / nbVirements) });
+      }
+    }
+
     onSave({
       payment_mode: paymentMode,
       report_type: reportType,
       financing_months: financingMonths,
       deposit_amount: depositAmount,
-      payments: paymentMode === "multipaiement" ? payments : undefined,
+      payments: payments.length > 0 ? payments : undefined,
       with_primes: withPrimes,
     });
   }
@@ -133,7 +111,7 @@ export default function StepResult({
   return (
     <div className="space-y-5">
       {/* HERO : MENSUALITÉ ou MONTANT selon le mode */}
-      {paymentMode === "financement" &&
+      {paymentMode === "credit_moderne" &&
         financing &&
         financing.monthly_payment > 0 ? (
           <div
@@ -294,21 +272,18 @@ export default function StepResult({
       <div className="rounded-[14px] bg-white shadow-card overflow-hidden">
         <div className="px-5 py-3.5 border-b border-[#F5F5F5] flex items-center gap-2">
           <CreditCard className="h-4 w-4 text-[#FA7800]" />
-          <p className="text-sm font-bold text-[#464646]">Financement</p>
+          <p className="text-sm font-bold text-[#464646]">Mode de règlement</p>
         </div>
         <div className="p-5 space-y-5">
           <div className="space-y-2">
-            <p className="text-[13px] font-bold text-[#464646]">
-              Mode de règlement
-            </p>
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               {PAYMENT_MODES.map((mode) => (
                 <button
                   key={mode.value}
                   type="button"
                   onClick={() => setPaymentMode(mode.value)}
                   className={cn(
-                    "rounded-[10px] border px-3 py-2.5 text-[13px] font-semibold transition-all",
+                    "rounded-[10px] border px-3 py-2.5 text-[13px] font-semibold transition-all text-left",
                     paymentMode === mode.value
                       ? "border-[#FA7800] bg-[#FA7800]/8 text-[#FA7800]"
                       : "border-[#E0E0E0] bg-white text-[#888] hover:border-[#FA7800]"
@@ -320,94 +295,8 @@ export default function StepResult({
             </div>
           </div>
 
-          {paymentMode === "multipaiement" && (
-            <div className="space-y-4 border-t border-[#F5F5F5] pt-4">
-              <div className="flex items-center justify-between">
-                <p className="text-[13px] font-bold text-[#464646]">
-                  Échéancier de paiement
-                </p>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={addPaymentRow}
-                  className="h-8 text-xs"
-                >
-                  <Plus className="mr-1 h-3 w-3" />
-                  Ajouter
-                </Button>
-              </div>
-
-              {payments.length === 0 && (
-                <p className="text-center text-xs text-[#ccc] py-4">
-                  Ajoutez des paiements pour calculer le reste à charge
-                </p>
-              )}
-
-              {payments.map((payment, index) => (
-                <div key={index} className="flex items-center gap-2">
-                  <Input
-                    type="text"
-                    className="flex-1 text-sm"
-                    value={payment.label}
-                    onFocus={(e) => e.target.select()}
-                    onChange={(e) =>
-                      updatePayment(index, "label", e.target.value)
-                    }
-                    placeholder="Libellé"
-                  />
-                  <Input
-                    type="number"
-                    inputMode="numeric"
-                    className="w-28 text-right text-sm font-semibold"
-                    value={payment.amount || ""}
-                    onFocus={(e) => e.target.select()}
-                    onChange={(e) =>
-                      updatePayment(index, "amount", e.target.value)
-                    }
-                    placeholder="0 €"
-                    min={0}
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 text-red-500 hover:text-red-700"
-                    onClick={() => removePaymentRow(index)}
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
-              ))}
-
-              {payments.length > 0 && (
-                <div
-                  className="rounded-[14px] p-4"
-                  style={{
-                    background:
-                      "linear-gradient(160deg, #464646, #3A3A3A 50%, #505050)",
-                  }}
-                >
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-white/60">Total payé</span>
-                    <span className="font-semibold text-white">
-                      {formatCurrency(totalPaid)}
-                    </span>
-                  </div>
-                  <div className="mt-2 flex items-center justify-between border-t border-white/10 pt-2">
-                    <span className="text-xs font-bold uppercase tracking-[0.1em] text-white/50">
-                      Reste à charge
-                    </span>
-                    <span className="text-[1.6rem] font-extrabold text-[#FA7800] leading-none font-heading">
-                      {formatCurrency(multiResteACharge)}
-                    </span>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {paymentMode === "financement" && (
+          {/* Crédit Moderne */}
+          {paymentMode === "credit_moderne" && (
             <div className="space-y-4 border-t border-[#F5F5F5] pt-4">
               <div className="space-y-2">
                 <p className="text-[13px] font-bold text-[#464646]">Report</p>
@@ -480,6 +369,113 @@ export default function StepResult({
                   placeholder="0"
                 />
               </div>
+            </div>
+          )}
+
+          {/* Fonds propres (Chèque) */}
+          {paymentMode === "fonds_propres_cheque" && (
+            <div className="space-y-4 border-t border-[#F5F5F5] pt-4">
+              <div className="space-y-2">
+                <p className="text-[13px] font-bold text-[#464646]">
+                  Nombre de chèques
+                </p>
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    disabled={nbCheques <= 1}
+                    onClick={() => setNbCheques((v) => Math.max(1, v - 1))}
+                  >
+                    −
+                  </Button>
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    className="w-14 rounded-md border border-input bg-background text-center text-lg font-semibold focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/15"
+                    value={nbCheques}
+                    onFocus={(e) => e.target.select()}
+                    onChange={(e) => {
+                      const v = parseInt(e.target.value, 10);
+                      if (!isNaN(v) && v >= 1 && v <= 20) setNbCheques(v);
+                    }}
+                    min={1}
+                    max={20}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    disabled={nbCheques >= 20}
+                    onClick={() => setNbCheques((v) => Math.min(20, v + 1))}
+                  >
+                    +
+                  </Button>
+                </div>
+                {nbCheques > 1 && (
+                  <p className="text-xs text-muted-foreground">
+                    ≈ {formatCurrency(Math.round(displayedTotal / nbCheques))} par chèque
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Virement */}
+          {paymentMode === "virement" && (
+            <div className="space-y-4 border-t border-[#F5F5F5] pt-4">
+              <div className="space-y-2">
+                <p className="text-[13px] font-bold text-[#464646]">
+                  Nombre de virements
+                </p>
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    disabled={nbVirements <= 1}
+                    onClick={() => setNbVirements((v) => Math.max(1, v - 1))}
+                  >
+                    −
+                  </Button>
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    className="w-14 rounded-md border border-input bg-background text-center text-lg font-semibold focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/15"
+                    value={nbVirements}
+                    onFocus={(e) => e.target.select()}
+                    onChange={(e) => {
+                      const v = parseInt(e.target.value, 10);
+                      if (!isNaN(v) && v >= 1 && v <= 20) setNbVirements(v);
+                    }}
+                    min={1}
+                    max={20}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    disabled={nbVirements >= 20}
+                    onClick={() => setNbVirements((v) => Math.min(20, v + 1))}
+                  >
+                    +
+                  </Button>
+                </div>
+                {nbVirements > 1 && (
+                  <p className="text-xs text-muted-foreground">
+                    ≈ {formatCurrency(Math.round(displayedTotal / nbVirements))} par virement
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Fonds propres (Banque) - pas d'options supplémentaires */}
+          {paymentMode === "fonds_propres_banque" && (
+            <div className="border-t border-[#F5F5F5] pt-4">
+              <p className="text-sm text-muted-foreground">
+                Paiement par virement bancaire direct.
+              </p>
             </div>
           )}
         </div>

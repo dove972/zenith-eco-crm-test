@@ -50,23 +50,23 @@ export type ProjectFormData = z.infer<typeof projectSchema>;
 
 export const financingSchema = z.object({
   payment_mode: z.enum([
-    "comptant",
-    "multipaiement",
-    "financement",
-    "cheque",
-    "especes",
+    "credit_moderne",
+    "fonds_propres_banque",
+    "fonds_propres_cheque",
+    "virement",
   ]),
   report_type: z.enum(["30j", "90j"]).optional(),
   financing_months: z.number().min(10).max(180).optional(),
   deposit_amount: z.number().min(0),
-  payment_schedule: z
+  payments: z
     .array(
       z.object({
         label: z.string(),
-        percentage: z.number().min(0).max(100),
+        amount: z.number().min(0),
       })
     )
     .optional(),
+  with_primes: z.boolean().optional(),
 });
 
 export type FinancingFormData = z.infer<typeof financingSchema>;

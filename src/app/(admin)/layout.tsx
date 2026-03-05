@@ -12,10 +12,10 @@ export default function AdminLayout({
 
   return (
     <SidebarContext.Provider value={{ collapsed, setCollapsed }}>
-      <div className="flex min-h-screen">
+      <div className="min-h-screen lg:flex">
         <AdminNav />
-        <main className="flex-1 overflow-auto">
-          <div className="mx-auto max-w-6xl p-4 pt-6 lg:p-8">{children}</div>
+        <main className="flex-1 overflow-auto pt-16 lg:pt-0">
+          <div className="mx-auto max-w-6xl p-4 pt-4 lg:p-8">{children}</div>
         </main>
       </div>
     </SidebarContext.Provider>

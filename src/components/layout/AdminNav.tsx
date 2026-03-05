@@ -215,9 +215,9 @@ export function AdminNav() {
       {/* Sidebar */}
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-50 flex flex-col bg-[#333] transition-all duration-200 lg:static",
-          collapsed ? "w-[68px]" : "w-[250px]",
-          mobileOpen ? "translate-x-0 w-[250px]" : "-translate-x-full lg:translate-x-0"
+          "fixed inset-y-0 left-0 z-50 flex flex-col bg-[#333] transition-all duration-200 lg:relative lg:shrink-0",
+          collapsed ? "lg:w-[68px]" : "lg:w-[250px]",
+          mobileOpen ? "translate-x-0 w-[250px]" : "-translate-x-full w-0 lg:translate-x-0"
         )}
       >
         {navContent}

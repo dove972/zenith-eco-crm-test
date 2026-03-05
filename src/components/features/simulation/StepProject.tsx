@@ -65,10 +65,13 @@ function findSalePrice(
   sheetType: "acier" | "alu",
   needsFramework: boolean
 ): { label: string; price_per_m2: number } | undefined {
-  const keyword = needsFramework ? "charpente" : sheetType;
-  return salePrices.find((sp) =>
-    sp.label.toLowerCase().includes(keyword.toLowerCase())
-  );
+  let label: string;
+  if (needsFramework) {
+    label = sheetType === "acier" ? "charpente_toles_acier" : "charpente_toles_alu";
+  } else {
+    label = sheetType === "acier" ? "toles_acier" : "toles_alu";
+  }
+  return salePrices.find((sp) => sp.label === label);
 }
 
 export default function StepProject({
@@ -108,12 +111,9 @@ export default function StepProject({
   const getProductQuantity = (productId: string): number =>
     formData.products.find((p) => p.product_id === productId)?.quantity ?? 0;
 
-  const acierPrice = salePrices.find((sp) =>
-    sp.label.toLowerCase().includes("acier")
-  );
-  const aluPrice = salePrices.find((sp) =>
-    sp.label.toLowerCase().includes("alu")
-  );
+  // Correspondance exacte pour éviter que "charpente_toles_acier" matche avant "toles_acier"
+  const acierPrice = salePrices.find((sp) => sp.label === "toles_acier");
+  const aluPrice = salePrices.find((sp) => sp.label === "toles_alu");
 
   const activePrice = findSalePrice(
     salePrices,

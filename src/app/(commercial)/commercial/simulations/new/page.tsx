@@ -14,9 +14,7 @@ import { Loader2 } from "lucide-react";
 import { useSimulationBasePath } from "@/hooks/use-simulation-paths";
 
 import StepClient from "@/components/features/simulation/StepClient";
-import StepEligibility, {
-  type PhotoSlot,
-} from "@/components/features/simulation/StepEligibility";
+import StepEligibility from "@/components/features/simulation/StepEligibility";
 import StepProject from "@/components/features/simulation/StepProject";
 import StepResult from "@/components/features/simulation/StepResult";
 
@@ -95,7 +93,6 @@ export default function NewSimulationPage() {
   const [products, setProducts] = useState<ComplementaryProduct[]>([]);
   const [loadingBaremes, setLoadingBaremes] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [photos, setPhotos] = useState<PhotoSlot[]>([]);
   const [financingData, setFinancingData] = useState<{
     payment_mode: string;
     report_type: "30j" | "90j";
@@ -137,27 +134,35 @@ export default function NewSimulationPage() {
     loadBaremes();
   }, []);
 
+  const scrollToTop = useCallback(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, []);
+
   const handleClientNext = useCallback((data: WizardData["client"]) => {
     setWizardData((prev) => ({ ...prev, client: data }));
     setStep(2);
-  }, []);
+    scrollToTop();
+  }, [scrollToTop]);
 
   const handleEligibilityNext = useCallback(
     (data: WizardData["eligibility"]) => {
       setWizardData((prev) => ({ ...prev, eligibility: data }));
       setStep(3);
+      scrollToTop();
     },
-    []
+    [scrollToTop]
   );
 
   const handleProjectNext = useCallback((data: WizardData["project"]) => {
     setWizardData((prev) => ({ ...prev, project: data }));
     setStep(4);
-  }, []);
+    scrollToTop();
+  }, [scrollToTop]);
 
   const handleBack = useCallback(() => {
     setStep((prev) => Math.max(1, prev - 1));
-  }, []);
+    scrollToTop();
+  }, [scrollToTop]);
 
   const computeResult = useCallback((): SimulationResult | null => {
     if (!baremes) return null;
@@ -283,43 +288,12 @@ export default function NewSimulationPage() {
         if (productsError) throw productsError;
       }
 
-      const photosToUpload = photos.filter((p) => p.file);
-      if (photosToUpload.length > 0) {
-        const docTypeMap: Record<string, string> = {
-          "Pièce d'identité": "identity",
-          "Avis d'impôt": "tax_notice",
-          "Taxe foncière": "property_tax",
-          "Justificatif de domicile": "edf_invoice",
-          "Autre document": "payslips",
-        };
-
-        for (const photo of photosToUpload) {
-          if (!photo.file) continue;
-          const ext = photo.file.name.split(".").pop() || "jpg";
-          const storagePath = `clients/${client.id}/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
-
-          const { error: uploadError } = await supabase.storage
-            .from("documents")
-            .upload(storagePath, photo.file);
-
-          if (!uploadError) {
-            await supabase.from("documents").insert({
-              client_id: client.id,
-              doc_type: docTypeMap[photo.label] || "identity",
-              storage_path: storagePath,
-              file_name: photo.file.name,
-              status: "pending",
-            });
-          }
-        }
-      }
-
       router.push(`${basePath}/${simulation.id}`);
     } catch (error) {
       console.error("Erreur lors de la sauvegarde:", error);
       setSaving(false);
     }
-  }, [profile, baremes, saving, wizardData, products, photos, router, computeResult, basePath]);
+  }, [profile, baremes, saving, wizardData, products, router, computeResult, basePath]);
 
   if (authLoading || loadingBaremes) {
     return (
@@ -388,8 +362,6 @@ export default function NewSimulationPage() {
         <StepEligibility
           data={wizardData.eligibility}
           mprThresholds={baremes.mpr_thresholds}
-          photos={photos.length > 0 ? photos : undefined}
-          onPhotosChange={setPhotos}
           onNext={handleEligibilityNext}
           onBack={handleBack}
         />
