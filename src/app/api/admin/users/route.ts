@@ -24,17 +24,16 @@ export async function POST(request: Request) {
   // Service role client required for admin.createUser
   const adminClient = createAdminClient();
 
+  // Only pass minimal metadata to avoid trigger issues with UUID casting
   const { data: authData, error: authError } =
     await adminClient.auth.admin.createUser({
       email: body.email,
       password: body.password || "TempPass123!",
       email_confirm: true,
       user_metadata: {
-        first_name: body.first_name,
-        last_name: body.last_name,
-        role: body.role,
-        phone: body.phone || null,
-        manager_id: body.manager_id || null,
+        first_name: body.first_name || "",
+        last_name: body.last_name || "",
+        role: body.role || "commercial",
       },
     });
 
@@ -42,16 +41,21 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: authError.message }, { status: 400 });
   }
 
+  // Update profile with ALL fields (phone, manager_id) via service role
+  // The trigger handle_new_user() already created the base profile row
   if (authData.user) {
+    const updateData: Record<string, unknown> = {
+      first_name: body.first_name,
+      last_name: body.last_name,
+      role: body.role,
+    };
+
+    if (body.phone) updateData.phone = body.phone;
+    if (body.manager_id) updateData.manager_id = body.manager_id;
+
     await adminClient
       .from("profiles")
-      .update({
-        first_name: body.first_name,
-        last_name: body.last_name,
-        role: body.role,
-        phone: body.phone || null,
-        manager_id: body.manager_id || null,
-      })
+      .update(updateData)
       .eq("id", authData.user.id);
   }
 
