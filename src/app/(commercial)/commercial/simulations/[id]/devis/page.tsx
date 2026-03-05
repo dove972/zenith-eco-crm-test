@@ -169,7 +169,8 @@ export default function DevisPage() {
       );
 
       if (rpcError || !devisNumber) {
-        toast.error("Erreur lors de la génération du numéro de devis");
+        console.error("Erreur RPC devis_number:", rpcError);
+        toast.error(`Erreur génération numéro de devis : ${rpcError?.message ?? "Numéro vide"}`);
         setSubmitting(false);
         return;
       }
@@ -198,7 +199,8 @@ export default function DevisPage() {
         .single();
 
       if (error) {
-        toast.error("Erreur lors de la création du devis");
+        console.error("Erreur création devis:", error);
+        toast.error(`Erreur lors de la création du devis : ${error.message}`);
         return;
       }
 

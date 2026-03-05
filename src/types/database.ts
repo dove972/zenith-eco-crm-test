@@ -18,7 +18,11 @@ export type PaymentMode =
   | "multipaiement"
   | "financement"
   | "cheque"
-  | "especes";
+  | "especes"
+  | "credit_moderne"
+  | "fonds_propres_banque"
+  | "fonds_propres_cheque"
+  | "virement";
 export type ReportType = "30j" | "90j";
 export type DocumentType =
   | "identity"
