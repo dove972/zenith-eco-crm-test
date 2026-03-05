@@ -215,45 +215,31 @@ export default function NewSimulationPage() {
       const result = computeResult();
       if (!result) throw new Error("Calculation failed");
 
-      // Insert client — essai avec email/comments, fallback sans si colonnes absentes
-      const clientBase = {
-        first_name: wizardData.client.first_name,
-        last_name: wizardData.client.last_name,
-        address: wizardData.client.address,
-        postal_code: wizardData.client.postal_code,
-        city: wizardData.client.city,
-        phone: wizardData.client.phone,
-        is_owner: wizardData.eligibility.is_owner,
-        is_primary_residence: wizardData.eligibility.is_primary_residence,
-        house_over_2_years: wizardData.eligibility.house_over_2_years,
-        tax_persons_count: wizardData.eligibility.tax_persons_count,
-        tax_reference_income: wizardData.eligibility.tax_reference_income,
-        mpr_client_type: result.mpr_client_type,
-        mpr_account_amount: wizardData.eligibility.mpr_account_amount,
-        commercial_id: profile.id,
-      };
-
-      let clientResult = await supabase
+      // Insert client
+      const { data: client, error: clientError } = await supabase
         .from("clients")
         .insert({
-          ...clientBase,
+          first_name: wizardData.client.first_name,
+          last_name: wizardData.client.last_name,
           email: wizardData.client.email || null,
+          address: wizardData.client.address,
+          postal_code: wizardData.client.postal_code,
+          city: wizardData.client.city,
+          phone: wizardData.client.phone,
           comments: wizardData.client.comments ?? "",
+          is_owner: wizardData.eligibility.is_owner,
+          is_primary_residence: wizardData.eligibility.is_primary_residence,
+          house_over_2_years: wizardData.eligibility.house_over_2_years,
+          tax_persons_count: wizardData.eligibility.tax_persons_count,
+          tax_reference_income: wizardData.eligibility.tax_reference_income,
+          mpr_client_type: result.mpr_client_type,
+          mpr_account_amount: wizardData.eligibility.mpr_account_amount,
+          commercial_id: profile.id,
         })
         .select("id")
         .single();
 
-      // Si erreur PGRST204 (colonne manquante), retry sans email/comments
-      if (clientResult.error?.code === "PGRST204") {
-        clientResult = await supabase
-          .from("clients")
-          .insert(clientBase)
-          .select("id")
-          .single();
-      }
-
-      if (clientResult.error) throw clientResult.error;
-      const client = clientResult.data;
+      if (clientError) throw clientError;
 
       const { data: simulation, error: simError } = await supabase
         .from("simulations")
