@@ -18,7 +18,7 @@ interface CreditRate {
   rate: number;
 }
 
-type RatesMap = Record<number, { id: string; rate: number; amount?: number }>;
+type RatesMap = Record<number, { id: string; rate: number }>;
 
 export default function CreditRatesPage() {
   const [rates30, setRates30] = useState<RatesMap>({});
@@ -80,16 +80,14 @@ export default function CreditRatesPage() {
     value: string
   ) {
     const setter = reportType === "30j" ? setRates30 : setRates90;
+    // Mensualité pour 1 000 € emprunté → taux = montant / 1000
     const amount = value === "" ? 0 : parseFloat(value);
-    // Calcul auto du taux : montant / 100 pour obtenir le taux décimal
-    // Exemple : si montant = 5.5, taux = 5.5% = 0.055
-    const rate = amount / 100;
+    const rate = amount / 1000;
     setter((prev) => ({
       ...prev,
       [months]: {
         ...prev[months],
         rate,
-        amount: value === "" ? undefined : amount,
       },
     }));
   }
@@ -136,7 +134,8 @@ export default function CreditRatesPage() {
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Taux de crédit</h1>
         <p className="text-muted-foreground">
-          Gérez les taux de crédit par durée et type de report
+          Gérez les taux de crédit par durée et type de report.
+          La colonne « Mensualité / 1 000 € » calcule automatiquement le taux.
         </p>
       </div>
 
@@ -195,10 +194,10 @@ function RateSection({
             <thead>
               <tr className="border-b">
                 <th className="pb-3 pr-4 text-left font-medium text-muted-foreground">
-                  Durée (mois)
+                  Durée
                 </th>
                 <th className="pb-3 pr-4 text-left font-medium text-muted-foreground">
-                  Montant (€)
+                  Mensualité / 1 000 € (€)
                 </th>
                 <th className="pb-3 text-left font-medium text-muted-foreground">
                   Taux (%)
@@ -208,9 +207,15 @@ function RateSection({
             <tbody>
               {MONTHS.map((m) => {
                 const entry = rates[m];
-                const displayValue =
+                // Afficher le taux en % (rate * 100)
+                const rateDisplay =
                   entry != null
                     ? (entry.rate * 100).toFixed(4).replace(/0+$/, "").replace(/\.$/, "")
+                    : "";
+                // Afficher le montant = rate * 1000 (mensualité pour 1000€)
+                const amountDisplay =
+                  entry != null && entry.rate > 0
+                    ? (entry.rate * 1000).toFixed(2).replace(/0+$/, "").replace(/\.$/, "")
                     : "";
 
                 return (
@@ -222,20 +227,20 @@ function RateSection({
                         step="0.01"
                         min="0"
                         className="w-32"
-                        value={entry?.amount ?? ""}
+                        value={amountDisplay}
                         onChange={(e) =>
                           onAmountChange(reportType, m, e.target.value)
                         }
-                        placeholder="Montant"
+                        placeholder="ex: 5.53"
                       />
                     </td>
                     <td className="py-2">
                       <Input
                         type="number"
-                        step="0.000001"
+                        step="0.0001"
                         min="0"
                         className="w-36"
-                        value={displayValue}
+                        value={rateDisplay}
                         onChange={(e) =>
                           onRateChange(reportType, m, e.target.value)
                         }

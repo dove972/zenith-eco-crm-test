@@ -154,6 +154,35 @@ export default function StepEligibility({
 
   const badge = MPR_BADGES[mprType];
 
+  // Compute threshold amounts for current person count
+  const currentThresholds = useMemo(() => {
+    const row = mprThresholds.find((t) => t.persons_count === formData.tax_persons_count);
+    if (row) {
+      return {
+        bleu: row.threshold_bleu,
+        jaune: row.threshold_jaune,
+        violet: row.threshold_violet,
+      };
+    }
+    // Extrapolate for > 5 persons
+    const maxRow = mprThresholds.reduce((max, t) =>
+      t.persons_count > max.persons_count ? t : max
+    , mprThresholds[0]);
+    if (!maxRow) return null;
+    const row5 = mprThresholds.find((t) => t.persons_count === 5);
+    const row6 = mprThresholds.find((t) => t.persons_count === 6);
+    if (!row5 || !row6) return { bleu: maxRow.threshold_bleu, jaune: maxRow.threshold_jaune, violet: maxRow.threshold_violet };
+    const extra = formData.tax_persons_count - maxRow.persons_count;
+    return {
+      bleu: maxRow.threshold_bleu + extra * (row6.threshold_bleu - row5.threshold_bleu),
+      jaune: maxRow.threshold_jaune + extra * (row6.threshold_jaune - row5.threshold_jaune),
+      violet: maxRow.threshold_violet + extra * (row6.threshold_violet - row5.threshold_violet),
+    };
+  }, [formData.tax_persons_count, mprThresholds]);
+
+  const formatEuro = (n: number) =>
+    new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(n);
+
   return (
     <div className="space-y-6">
       <h2 className="text-lg font-semibold">Éligibilité</h2>
@@ -239,17 +268,39 @@ export default function StepEligibility({
         />
       </div>
 
-      {/* Badge MPR temps réel */}
-      <div className="flex items-center gap-3">
-        <span className="text-sm text-muted-foreground">Profil MPR :</span>
-        <span
-          className={cn(
-            "rounded-full px-3 py-1 text-xs font-semibold",
-            badge.className
-          )}
-        >
-          {badge.label}
-        </span>
+      {/* Badge MPR temps réel + seuils */}
+      <div className="rounded-[14px] border p-4 space-y-3">
+        <div className="flex items-center gap-3">
+          <span className="text-sm text-muted-foreground">Profil MPR :</span>
+          <span
+            className={cn(
+              "rounded-full px-3 py-1 text-xs font-semibold",
+              badge.className
+            )}
+          >
+            {badge.label}
+          </span>
+        </div>
+        {currentThresholds && (
+          <div className="grid grid-cols-2 gap-2 text-[11px]">
+            <div className="flex items-center gap-2">
+              <span className="inline-block h-2.5 w-2.5 rounded-full bg-blue-500 shrink-0" />
+              <span className="text-muted-foreground">Bleu ≤ {formatEuro(currentThresholds.bleu)}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="inline-block h-2.5 w-2.5 rounded-full bg-yellow-400 shrink-0" />
+              <span className="text-muted-foreground">Jaune ≤ {formatEuro(currentThresholds.jaune)}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="inline-block h-2.5 w-2.5 rounded-full bg-purple-500 shrink-0" />
+              <span className="text-muted-foreground">Violet ≤ {formatEuro(currentThresholds.violet)}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="inline-block h-2.5 w-2.5 rounded-full bg-pink-400 shrink-0" />
+              <span className="text-muted-foreground">Rose &gt; {formatEuro(currentThresholds.violet)}</span>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Isolation 106/109 - Boutons Oui/Non */}

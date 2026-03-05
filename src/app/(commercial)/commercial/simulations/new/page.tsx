@@ -291,6 +291,8 @@ export default function NewSimulationPage() {
       router.push(`${basePath}/${simulation.id}`);
     } catch (error) {
       console.error("Erreur lors de la sauvegarde:", error);
+      alert("Erreur lors de la sauvegarde : " + (error instanceof Error ? error.message : String(error)));
+    } finally {
       setSaving(false);
     }
   }, [profile, baremes, saving, wizardData, products, router, computeResult, basePath]);

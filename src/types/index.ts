@@ -189,6 +189,11 @@ export const DEVIS_STATUS_LABELS: Record<string, string> = {
 };
 
 export const PAYMENT_MODE_LABELS: Record<string, string> = {
+  credit_moderne: "Crédit Moderne",
+  fonds_propres_banque: "Fonds propres (Banque)",
+  fonds_propres_cheque: "Fonds propres (Chèque)",
+  virement: "Virement",
+  // Legacy modes (for existing devis)
   comptant: "Comptant",
   multipaiement: "Multi-paiement",
   financement: "Financement",

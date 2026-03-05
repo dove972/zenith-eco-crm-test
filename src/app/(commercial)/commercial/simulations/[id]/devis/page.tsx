@@ -46,11 +46,10 @@ const DEFAULT_SCHEDULE: ScheduleRow[] = [
 ];
 
 const PAYMENT_MODES = [
-  { value: "comptant", label: "Comptant" },
-  { value: "multipaiement", label: "Multi-paiement" },
-  { value: "financement", label: "Financement" },
-  { value: "cheque", label: "Chèque" },
-  { value: "especes", label: "Espèces" },
+  { value: "credit_moderne", label: "Crédit Moderne" },
+  { value: "fonds_propres_banque", label: "Fonds propres (Banque)" },
+  { value: "fonds_propres_cheque", label: "Fonds propres (Chèque)" },
+  { value: "virement", label: "Virement" },
 ];
 
 const FINANCING_DURATIONS = [
@@ -86,7 +85,8 @@ export default function DevisPage() {
   const [simProducts, setSimProducts] = useState<SimulationProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [paymentMode, setPaymentMode] = useState("financement");
+  const [sendingEmail, setSendingEmail] = useState(false);
+  const [paymentMode, setPaymentMode] = useState("credit_moderne");
   const [schedule, setSchedule] = useState<ScheduleRow[]>(DEFAULT_SCHEDULE);
   const [reportType, setReportType] = useState<"30j" | "90j">("90j");
   const [financingMonths, setFinancingMonths] = useState(180);
@@ -123,12 +123,12 @@ export default function DevisPage() {
     if (devisData) {
       const d = devisData as Devis;
       setDevis(d);
-      setPaymentMode(d.payment_mode ?? "financement");
+      setPaymentMode(d.payment_mode ?? "credit_moderne");
       setReportType(d.report_type ?? "90j");
       setFinancingMonths(d.financing_months ?? 180);
       setDepositAmount(d.deposit_amount ?? 0);
       if (
-        d.payment_mode === "multipaiement" &&
+        (d.payment_mode === "multipaiement" || d.payment_mode === "fonds_propres_cheque") &&
         Array.isArray(d.payment_schedule) &&
         d.payment_schedule.length > 0
       ) {
@@ -148,7 +148,7 @@ export default function DevisPage() {
     : 0;
 
   const financing = useMemo(() => {
-    if (paymentMode !== "financement" || amountToFinance <= 0) return null;
+    if (paymentMode !== "credit_moderne" || amountToFinance <= 0) return null;
     return calculateMonthlyPayment(
       amountToFinance,
       reportType,
@@ -182,14 +182,14 @@ export default function DevisPage() {
           status: "brouillon",
           payment_mode: paymentMode,
           payment_schedule:
-            paymentMode === "multipaiement" ? schedule : [],
-          report_type: paymentMode === "financement" ? reportType : null,
+            paymentMode === "fonds_propres_cheque" ? schedule : [],
+          report_type: paymentMode === "credit_moderne" ? reportType : null,
           financing_months:
-            paymentMode === "financement" ? financingMonths : null,
+            paymentMode === "credit_moderne" ? financingMonths : null,
           deposit_amount:
-            paymentMode === "financement" ? depositAmount : 0,
+            paymentMode === "credit_moderne" ? depositAmount : 0,
           monthly_payment:
-            paymentMode === "financement" && financing
+            paymentMode === "credit_moderne" && financing
               ? financing.monthly_payment
               : null,
           legal_mentions: "Devis valable 3 mois à compter de sa date d'émission.",
@@ -296,6 +296,59 @@ export default function DevisPage() {
     );
     const phone = client.phone?.replace(/\s/g, "").replace(/^0/, "33");
     window.open(`https://wa.me/${phone}?text=${message}`, "_blank");
+  }
+
+  async function handleSendEmail() {
+    if (!devis || !simulation?.client) return;
+    const client = simulation.client;
+    if (!client.email) {
+      toast.error("Le client n'a pas d'adresse email renseignée");
+      return;
+    }
+    setSendingEmail(true);
+    try {
+      const supabase = createClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        toast.error("Session expirée, veuillez vous reconnecter");
+        return;
+      }
+
+      const pdfUrl = `${window.location.origin}/api/devis/${devis.id}/pdf`;
+
+      const res = await fetch("/api/email/send-devis", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          clientEmail: client.email,
+          clientFirstName: client.first_name,
+          clientLastName: client.last_name,
+          devisNumber: devis.devis_number,
+          montantTotal: formatCurrency(simulation.total_ttc),
+          description: `Projet de toiture – ${simulation.sheet_type === "acier" ? "Bac acier" : "Bac aluminium"}`,
+          pdfUrl,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        toast.error(data.error || "Erreur lors de l'envoi");
+      } else {
+        toast.success(`Devis envoyé à ${client.email}`);
+        // Mettre le statut à "envoyé" automatiquement si brouillon
+        if (devis.status === "brouillon") {
+          await handleUpdateStatus("envoye");
+        }
+      }
+    } catch (error) {
+      console.error("Erreur envoi email:", error);
+      toast.error("Erreur lors de l'envoi de l'email");
+    } finally {
+      setSendingEmail(false);
+    }
   }
 
   function addScheduleRow() {
@@ -528,7 +581,7 @@ export default function DevisPage() {
               </span>
             </div>
 
-            {devis.payment_mode === "financement" && (
+            {(devis.payment_mode === "financement" || devis.payment_mode === "credit_moderne") && (
               <>
                 {devis.report_type && (
                   <div className="flex justify-between">
@@ -572,7 +625,7 @@ export default function DevisPage() {
               </>
             )}
 
-            {devis.payment_mode === "multipaiement" &&
+            {(devis.payment_mode === "multipaiement" || devis.payment_mode === "fonds_propres_cheque") &&
               scheduleData.length > 0 && (
                 <div className="space-y-1 border-t pt-2">
                   <p className="text-xs font-medium uppercase text-muted-foreground">
@@ -742,6 +795,24 @@ export default function DevisPage() {
             <Share2 className="mr-2 h-4 w-4" />
             Partager via WhatsApp
           </Button>
+
+          <Button
+            onClick={handleSendEmail}
+            disabled={sendingEmail || !simulation?.client?.email}
+            className="col-span-2 bg-[#FA7800] hover:bg-[#e06e00] text-white"
+          >
+            {sendingEmail ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Send className="mr-2 h-4 w-4" />
+            )}
+            {sendingEmail ? "Envoi en cours…" : "Envoyer par email"}
+          </Button>
+          {!simulation?.client?.email && (
+            <p className="col-span-2 text-center text-xs text-muted-foreground">
+              Aucun email renseigné pour ce client
+            </p>
+          )}
         </div>
       </div>
     );

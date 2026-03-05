@@ -134,7 +134,7 @@ export default function StepResult({
             </p>
             <div className="mt-4 pt-3 border-t border-white/5">
               <p className="text-[11px] text-white/25">
-                Montant {withPrimes ? "après primes" : "total"} :{" "}
+                Montant {withPrimes ? "après primes" : "total"} TTC :{" "}
                 <span className="text-white/50 font-semibold">
                   {formatCurrency(displayedTotal)}
                 </span>
@@ -150,12 +150,14 @@ export default function StepResult({
             }}
           >
             <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/40 mb-1">
-              Montant à régler
+              {withPrimes ? "Reste à charge TTC" : "Montant total TTC"}
             </p>
             <p className="text-[2.8rem] font-extrabold text-[#FA7800] leading-none tracking-tight">
               {formatCurrency(displayedTotal)}
             </p>
-            <p className="text-[11px] text-white/30 mt-2 font-medium">TTC</p>
+            <p className="text-[11px] text-white/30 mt-2 font-medium">
+              {withPrimes ? "Après déduction des primes" : "Toutes taxes comprises"}
+            </p>
           </div>
         )}
 
@@ -264,6 +266,23 @@ export default function StepResult({
                 −{formatCurrency(result.remise_zenith_eco)}
               </span>
             </div>
+          )}
+
+          {withPrimes && totalPrimes > 0 && (
+            <>
+              <div className="flex items-center justify-between text-sm border-t border-[#F5F5F5] pt-3">
+                <span className="text-[#43A047] font-medium">Primes déduites</span>
+                <span className="font-semibold text-[#43A047]">
+                  −{formatCurrency(totalPrimes)}
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-sm border-t border-[#F5F5F5] pt-3">
+                <span className="text-[#FA7800] font-bold">Reste à charge TTC</span>
+                <span className="font-extrabold text-[#FA7800]">
+                  {formatCurrency(displayedTotal)}
+                </span>
+              </div>
+            </>
           )}
         </div>
       </div>

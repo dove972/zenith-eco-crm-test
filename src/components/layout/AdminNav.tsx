@@ -217,7 +217,7 @@ export function AdminNav() {
         className={cn(
           "fixed inset-y-0 left-0 z-50 flex flex-col bg-[#333] transition-all duration-200 lg:relative lg:shrink-0",
           collapsed ? "lg:w-[68px]" : "lg:w-[250px]",
-          mobileOpen ? "translate-x-0 w-[250px]" : "-translate-x-full w-0 lg:translate-x-0"
+          mobileOpen ? "translate-x-0 w-[250px]" : "-translate-x-full w-0 overflow-hidden lg:translate-x-0 lg:overflow-visible"
         )}
       >
         {navContent}

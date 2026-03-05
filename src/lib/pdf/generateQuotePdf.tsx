@@ -587,6 +587,10 @@ const s = StyleSheet.create({
 });
 
 const PAYMENT_MODE_LABELS: Record<string, string> = {
+  credit_moderne: "Crédit Moderne",
+  fonds_propres_banque: "Fonds propres (Banque)",
+  fonds_propres_cheque: "Fonds propres (Chèque)",
+  virement: "Virement",
   comptant: "Comptant",
   multipaiement: "Multi-paiement",
   financement: "Financement",
@@ -611,7 +615,7 @@ export function QuotePdfDocument(props: QuotePdfProps) {
   const logoPath = path.join(process.cwd(), "public", "logo-zenith.png");
 
   const hasFinancing =
-    devis.payment_mode === "financement" &&
+    (devis.payment_mode === "financement" || devis.payment_mode === "credit_moderne") &&
     devis.monthly_payment != null &&
     devis.financing_months != null;
 
