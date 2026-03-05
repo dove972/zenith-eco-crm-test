@@ -33,6 +33,8 @@ export async function POST(request: Request) {
         first_name: body.first_name,
         last_name: body.last_name,
         role: body.role,
+        phone: body.phone || null,
+        manager_id: body.manager_id || null,
       },
     });
 
