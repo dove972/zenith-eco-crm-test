@@ -10,6 +10,7 @@ export type LoginFormData = z.infer<typeof loginSchema>;
 export const clientSchema = z.object({
   first_name: z.string().min(1, "Prénom requis"),
   last_name: z.string().min(1, "Nom requis"),
+  email: z.string().email("Email invalide").optional().or(z.literal("")),
   address: z.string().min(1, "Adresse requise"),
   postal_code: z.string().min(1, "Code postal requis"),
   city: z.string().min(1, "Ville requise"),

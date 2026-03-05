@@ -24,6 +24,7 @@ interface WizardData {
   client: {
     first_name: string;
     last_name: string;
+    email?: string;
     address: string;
     postal_code: string;
     city: string;
@@ -214,6 +215,7 @@ export default function NewSimulationPage() {
         .insert({
           first_name: wizardData.client.first_name,
           last_name: wizardData.client.last_name,
+          email: wizardData.client.email || null,
           address: wizardData.client.address,
           postal_code: wizardData.client.postal_code,
           city: wizardData.client.city,

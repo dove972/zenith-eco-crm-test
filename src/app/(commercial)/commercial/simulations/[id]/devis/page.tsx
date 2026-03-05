@@ -32,6 +32,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useSimulationBasePath } from "@/hooks/use-simulation-paths";
+import { useAuth } from "@/hooks/use-auth";
 
 interface ScheduleRow {
   label: string;
@@ -77,6 +78,7 @@ export default function DevisPage() {
   const params = useParams();
   const simulationId = params.id as string;
   const basePath = useSimulationBasePath();
+  const { profile } = useAuth();
 
   const [simulation, setSimulation] = useState<Simulation | null>(null);
   const [devis, setDevis] = useState<Devis | null>(null);
@@ -235,6 +237,50 @@ export default function DevisPage() {
         `Statut mis à jour : ${DEVIS_STATUS_LABELS[newStatus] ?? newStatus}`
       );
       setDevis(updatedDevis as Devis);
+
+      // Envoyer l'email au client quand le devis passe en "envoyé"
+      if (newStatus === "envoye" && simulation?.client) {
+        const clientEmail = simulation.client.email;
+        if (clientEmail) {
+          try {
+            const session = await supabase.auth.getSession();
+            const token = session.data.session?.access_token;
+
+            const commercialName = profile
+              ? `${profile.first_name} ${profile.last_name}`
+              : "ZENITH ECO";
+            const commercialPhone = profile?.phone || "";
+
+            const emailRes = await fetch("/api/email/send-devis", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`,
+              },
+              body: JSON.stringify({
+                clientEmail,
+                clientFirstName: simulation.client.first_name,
+                clientLastName: simulation.client.last_name,
+                devisNumber: devis.devis_number,
+                montantTotal: simulation.total_ttc,
+                commercialName,
+                commercialPhone,
+                description: `Devis pour toiture ${simulation.sheet_type.toUpperCase()} — ${simulation.surface_m2} m²`,
+              }),
+            });
+
+            if (emailRes.ok) {
+              toast.success("Email envoyé au client !");
+            } else {
+              toast.warning("Devis envoyé mais l'email n'a pas pu être envoyé");
+            }
+          } catch {
+            toast.warning("Devis envoyé mais l'email n'a pas pu être envoyé");
+          }
+        } else {
+          toast.info("Pas d'email client renseigné — devis mis à jour sans envoi");
+        }
+      }
     } catch {
       toast.error("Erreur réseau, veuillez réessayer");
     } finally {
@@ -369,6 +415,11 @@ export default function DevisPage() {
                 <p className="text-muted-foreground text-xs">
                   Tél : {simulation.client.phone}
                 </p>
+                {simulation.client.email && (
+                  <p className="text-muted-foreground text-xs">
+                    Email : {simulation.client.email}
+                  </p>
+                )}
               </div>
             )}
 

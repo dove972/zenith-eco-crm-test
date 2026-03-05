@@ -15,6 +15,7 @@ interface StepClientProps {
 const FIELDS = [
   { name: "first_name" as const, label: "Prénom", type: "text", autoComplete: "given-name" },
   { name: "last_name" as const, label: "Nom", type: "text", autoComplete: "family-name" },
+  { name: "email" as const, label: "Email", type: "email", autoComplete: "email" },
   { name: "address" as const, label: "Adresse", type: "text", autoComplete: "street-address" },
   { name: "postal_code" as const, label: "Code postal", type: "text", autoComplete: "postal-code" },
   { name: "city" as const, label: "Ville", type: "text", autoComplete: "address-level2" },

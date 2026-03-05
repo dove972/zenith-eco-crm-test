@@ -170,6 +170,33 @@ export default function UtilisateursPage() {
           return;
         }
         toast.success("Utilisateur créé avec succès");
+
+        // Envoyer l'email d'invitation
+        try {
+          const session = await supabase.auth.getSession();
+          const token = session.data.session?.access_token;
+          const emailRes = await fetch("/api/email/send-invitation", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              email: formData.email,
+              password: formData.password || "TempPass123!",
+              firstName: formData.first_name,
+              lastName: formData.last_name,
+              role: formData.role,
+            }),
+          });
+          if (emailRes.ok) {
+            toast.success("Email d'invitation envoyé !");
+          } else {
+            toast.warning("Utilisateur créé mais l'email n'a pas pu être envoyé");
+          }
+        } catch {
+          toast.warning("Utilisateur créé mais l'email n'a pas pu être envoyé");
+        }
       }
 
       cancelForm();
