@@ -120,14 +120,19 @@ export default function NewSimulationPage() {
         supabase.from("complementary_products").select("*").eq("active", true),
       ]);
 
+      const allProducts = (complementaryProducts as ComplementaryProduct[]) ?? [];
+      const devisLines = allProducts.filter((p) => p.is_devis_line);
+      const addonProducts = allProducts.filter((p) => !p.is_devis_line);
+
       setBaremes({
         sale_prices: salePrices ?? [],
         mpr_thresholds: mprThresholds ?? [],
         mpr_rates: mprRates ?? [],
         cee_rates: ceeRates ?? [],
         credit_rates: creditRates ?? [],
+        devis_line_items: devisLines,
       });
-      setProducts((complementaryProducts as ComplementaryProduct[]) ?? []);
+      setProducts(addonProducts);
       setLoadingBaremes(false);
     }
 

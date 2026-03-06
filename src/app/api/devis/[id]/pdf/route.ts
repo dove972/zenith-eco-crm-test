@@ -69,10 +69,18 @@ export async function GET(
     );
   }
 
-  const { data: simProducts } = await supabase
-    .from("simulation_products")
-    .select("quantity, unit_price, total_price, product:complementary_products(name, tva_rate)")
-    .eq("simulation_id", simulation.id);
+  const [{ data: simProducts }, { data: devisLineProducts }] = await Promise.all([
+    supabase
+      .from("simulation_products")
+      .select("quantity, unit_price, total_price, product:complementary_products(name, tva_rate)")
+      .eq("simulation_id", simulation.id),
+    supabase
+      .from("complementary_products")
+      .select("name, unit_price_sell, tva_rate, unit_label, sort_order, active, quantity_mode, inclusion_condition, devis_group, sheet_type_variant")
+      .eq("is_devis_line", true)
+      .eq("active", true)
+      .order("sort_order"),
+  ]);
 
   const products = (simProducts || []).map((sp: any) => ({
     name: sp.product?.name || "Produit",
@@ -80,6 +88,19 @@ export async function GET(
     unit_price: sp.unit_price,
     total_price: sp.total_price,
     tva_rate: sp.product?.tva_rate ?? 2.1,
+  }));
+
+  const devisLineItems = (devisLineProducts || []).map((p: any) => ({
+    name: p.name as string,
+    unit_price_sell: p.unit_price_sell as number,
+    tva_rate: p.tva_rate as number,
+    unit_label: p.unit_label as string,
+    sort_order: p.sort_order as number,
+    active: p.active as boolean,
+    quantity_mode: p.quantity_mode as "manual" | "fixed" | "surface",
+    inclusion_condition: p.inclusion_condition as "always" | "needs_framework" | "eligible_109" | "eligible_106" | null,
+    devis_group: p.devis_group as string | null,
+    sheet_type_variant: p.sheet_type_variant as "acier" | "alu" | null,
   }));
 
   try {
@@ -114,6 +135,7 @@ export async function GET(
       client,
       commercial,
       products,
+      devisLineItems,
     });
 
     return new NextResponse(pdfBuffer, {

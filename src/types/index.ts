@@ -81,6 +81,12 @@ export interface ComplementaryProduct {
   unit_label: string;
   active: boolean;
   sort_order: number;
+  is_devis_line: boolean;
+  devis_line_key: string | null;
+  quantity_mode: "manual" | "fixed" | "surface";
+  inclusion_condition: "always" | "needs_framework" | "eligible_109" | "eligible_106" | null;
+  devis_group: string | null;
+  sheet_type_variant: "acier" | "alu" | null;
 }
 
 export interface SimulationProduct {

@@ -6,10 +6,11 @@ import {
   calculateSubsidies,
   calculateSimulation,
   calculateMonthlyPayment,
+  buildLineItems,
   type BaremeData,
   type SimulationInput,
 } from "./simulationEngine";
-import type { MprThreshold, SalePrice, MprRate, CeeRate, CreditRate } from "@/types";
+import type { MprThreshold, SalePrice, MprRate, CeeRate, CreditRate, ComplementaryProduct } from "@/types";
 
 // ─── Test data from the Excel file ───
 
@@ -44,12 +45,48 @@ const testCreditRates: CreditRate[] = [
   { id: "3", report_type: "30j", months: 60, rate: 0.021582 },
 ];
 
+function makeDevisLine(overrides: Partial<ComplementaryProduct> & { name: string; sort_order: number }): ComplementaryProduct {
+  return {
+    id: `dl-${overrides.sort_order}`,
+    name: overrides.name,
+    category: overrides.category ?? "autre",
+    unit_price_sell: overrides.unit_price_sell ?? 0,
+    unit_price_cost: 0,
+    tva_rate: overrides.tva_rate ?? 2.1,
+    unit_label: overrides.unit_label ?? "unité",
+    active: overrides.active ?? true,
+    sort_order: overrides.sort_order,
+    is_devis_line: true,
+    devis_line_key: overrides.devis_line_key ?? null,
+    quantity_mode: overrides.quantity_mode ?? "fixed",
+    inclusion_condition: overrides.inclusion_condition ?? "always",
+    devis_group: overrides.devis_group ?? null,
+    sheet_type_variant: overrides.sheet_type_variant ?? null,
+  };
+}
+
+const testDevisLineItems: ComplementaryProduct[] = [
+  makeDevisLine({ name: "Prévisite & contrôle de chantier", sort_order: 101, unit_price_sell: 250, tva_rate: 2.1, quantity_mode: "fixed", inclusion_condition: "always", devis_group: "Prévisite et étude technique", devis_line_key: "previsite" }),
+  makeDevisLine({ name: "Frais d'étude technique par maître d'œuvre", sort_order: 102, unit_price_sell: 499, tva_rate: 2.1, quantity_mode: "fixed", inclusion_condition: "always", devis_group: "Prévisite et étude technique", devis_line_key: "etude_technique" }),
+  makeDevisLine({ name: "Fournitures de tôles ACIER + accessoires", sort_order: 103, unit_price_sell: 49, tva_rate: 2.1, quantity_mode: "surface", inclusion_condition: "always", devis_group: "Travaux Toiture", devis_line_key: "tole", sheet_type_variant: "acier" }),
+  makeDevisLine({ name: "Fournitures de tôles ALU + accessoires", sort_order: 104, unit_price_sell: 59, tva_rate: 2.1, quantity_mode: "surface", inclusion_condition: "always", devis_group: "Travaux Toiture", devis_line_key: "tole", sheet_type_variant: "alu" }),
+  makeDevisLine({ name: "Main d'œuvre changement de tôle", sort_order: 105, unit_price_sell: 59, tva_rate: 2.1, quantity_mode: "surface", inclusion_condition: "always", devis_group: "Travaux Toiture", devis_line_key: "mo_tole" }),
+  makeDevisLine({ name: "Livraison tôles et accessoires", sort_order: 106, unit_price_sell: 350, tva_rate: 2.1, quantity_mode: "fixed", inclusion_condition: "always", devis_group: "Travaux Toiture", devis_line_key: "livraison_toles" }),
+  makeDevisLine({ name: "Achat bois charpente", sort_order: 107, unit_price_sell: 30, tva_rate: 2.1, quantity_mode: "surface", inclusion_condition: "needs_framework", devis_group: "Charpente", devis_line_key: "bois_charpente" }),
+  makeDevisLine({ name: "Main d'œuvre confection de charpente", sort_order: 108, unit_price_sell: 40, tva_rate: 2.1, quantity_mode: "surface", inclusion_condition: "needs_framework", devis_group: "Charpente", devis_line_key: "mo_charpente" }),
+  makeDevisLine({ name: "Réduction apports solaires toiture - THERMOBULLE", sort_order: 109, unit_price_sell: 19, tva_rate: 0, quantity_mode: "surface", inclusion_condition: "eligible_109", devis_group: "Protection parois opaques BAR-EN-109", devis_line_key: "isolant_109_materiau" }),
+  makeDevisLine({ name: "Livraison et mise en place isolant THERMOBULLE", sort_order: 110, unit_price_sell: 19, tva_rate: 2.1, quantity_mode: "surface", inclusion_condition: "eligible_109", devis_group: "Protection parois opaques BAR-EN-109", devis_line_key: "isolant_109_pose" }),
+  makeDevisLine({ name: "Isolation toiture en pente - URSA MRA 40", sort_order: 111, unit_price_sell: 19, tva_rate: 0, quantity_mode: "surface", inclusion_condition: "eligible_106", devis_group: "Installation rampants BAR-EN-106", devis_line_key: "isolant_106_materiau" }),
+  makeDevisLine({ name: "Livraison et mise en place isolation URSA MRA 40", sort_order: 112, unit_price_sell: 19, tva_rate: 2.1, quantity_mode: "surface", inclusion_condition: "eligible_106", devis_group: "Installation rampants BAR-EN-106", devis_line_key: "isolant_106_pose" }),
+];
+
 const testBaremes: BaremeData = {
   sale_prices: testSalePrices,
   mpr_thresholds: testThresholds,
   mpr_rates: testMprRates,
   cee_rates: testCeeRates,
   credit_rates: testCreditRates,
+  devis_line_items: testDevisLineItems,
 };
 
 // ─── Tests ───
@@ -291,5 +328,77 @@ describe("calculateMonthlyPayment", () => {
   it("returns 0 for unknown duration", () => {
     const result = calculateMonthlyPayment(27847, "90j", 999, testCreditRates);
     expect(result.monthly_payment).toBe(0);
+  });
+});
+
+describe("buildLineItems (data-driven)", () => {
+  const allEligible = { mpr_106: true, mpr_109: true, cee_106: true, cee_109: true };
+  const noneEligible = { mpr_106: false, mpr_109: false, cee_106: false, cee_109: false };
+
+  it("returns 9 items for ACIER without framework, all eligible", () => {
+    const items = buildLineItems(150, "acier", false, allEligible, testDevisLineItems);
+    // prévisite(1) + étude(1) + tôle ACIER(1) + MO tôle(1) + livraison(1) + 109(2) + 106(2) = 9
+    expect(items).toHaveLength(9);
+  });
+
+  it("returns 11 items for ACIER with framework, all eligible", () => {
+    const items = buildLineItems(150, "acier", true, allEligible, testDevisLineItems);
+    // 9 + charpente(2) = 11
+    expect(items).toHaveLength(11);
+  });
+
+  it("returns correct tole price for ACIER (49€/m²)", () => {
+    const items = buildLineItems(150, "acier", false, allEligible, testDevisLineItems);
+    const tole = items.find((i) => i.label.includes("tôles ACIER"));
+    expect(tole).toBeDefined();
+    expect(tole!.unit_price).toBe(49);
+    expect(tole!.quantity).toBe(150);
+  });
+
+  it("returns correct tole price for ALU (59€/m²)", () => {
+    const items = buildLineItems(150, "alu", false, allEligible, testDevisLineItems);
+    const tole = items.find((i) => i.label.includes("tôles ALU"));
+    expect(tole).toBeDefined();
+    expect(tole!.unit_price).toBe(59);
+  });
+
+  it("excludes framework lines when needs_framework is false", () => {
+    const items = buildLineItems(150, "acier", false, allEligible, testDevisLineItems);
+    const charpente = items.filter((i) => i.label.includes("charpente"));
+    expect(charpente).toHaveLength(0);
+  });
+
+  it("includes framework lines when needs_framework is true", () => {
+    const items = buildLineItems(150, "acier", true, allEligible, testDevisLineItems);
+    const charpente = items.filter((i) => i.label.includes("charpente"));
+    expect(charpente).toHaveLength(2);
+  });
+
+  it("excludes isolation lines when not eligible", () => {
+    const items = buildLineItems(150, "acier", false, noneEligible, testDevisLineItems);
+    // Only: prévisite + étude + tôle ACIER + MO tôle + livraison = 5
+    expect(items).toHaveLength(5);
+  });
+
+  it("uses fixed quantity (1) for fixed items", () => {
+    const items = buildLineItems(150, "acier", false, allEligible, testDevisLineItems);
+    const previsite = items.find((i) => i.label.includes("Prévisite"));
+    expect(previsite!.quantity).toBe(1);
+    expect(previsite!.unit_price).toBe(250);
+  });
+
+  it("uses surface for surface items", () => {
+    const items = buildLineItems(100, "acier", false, allEligible, testDevisLineItems);
+    const moTole = items.find((i) => i.label.includes("Main d'œuvre changement"));
+    expect(moTole!.quantity).toBe(100);
+  });
+
+  it("skips inactive items", () => {
+    const itemsWithInactive = testDevisLineItems.map((item) =>
+      item.devis_line_key === "previsite" ? { ...item, active: false } : item
+    );
+    const items = buildLineItems(150, "acier", false, allEligible, itemsWithInactive);
+    const previsite = items.find((i) => i.label.includes("Prévisite"));
+    expect(previsite).toBeUndefined();
   });
 });

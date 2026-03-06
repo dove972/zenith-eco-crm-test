@@ -58,6 +58,18 @@ export interface QuotePdfProps {
     total_price: number;
     tva_rate?: number;
   }>;
+  devisLineItems: Array<{
+    name: string;
+    unit_price_sell: number;
+    tva_rate: number;
+    unit_label: string;
+    sort_order: number;
+    active: boolean;
+    quantity_mode: "manual" | "fixed" | "surface";
+    inclusion_condition: "always" | "needs_framework" | "eligible_109" | "eligible_106" | null;
+    devis_group: string | null;
+    sheet_type_variant: "acier" | "alu" | null;
+  }>;
 }
 
 // ─── Internal types ───
@@ -127,83 +139,66 @@ function makeGroup(title: string, items: LineItem[]): ItemGroup {
 }
 
 function buildGroups(props: QuotePdfProps): ItemGroup[] {
-  const { simulation, products } = props;
+  const { simulation, products, devisLineItems } = props;
   const { sheet_type, needs_framework, surface_m2 } = simulation;
   const groups: ItemGroup[] = [];
 
-  groups.push(
-    makeGroup("Prévisite et étude technique", [
-      makeLine("Prévisite & contrôle de chantier", 1, 250, 2.1),
-      makeLine("Frais d'étude technique par maître d'œuvre", 1, 499, 2.1),
-    ])
-  );
+  // Filter applicable devis line items (same logic as simulationEngine)
+  const applicable = devisLineItems
+    .filter((item) => item.active)
+    .filter((item) => {
+      if (item.sheet_type_variant && item.sheet_type_variant !== sheet_type) {
+        return false;
+      }
+      return true;
+    })
+    .filter((item) => {
+      switch (item.inclusion_condition) {
+        case "always":
+          return true;
+        case "needs_framework":
+          return needs_framework;
+        case "eligible_109":
+          return !simulation.already_isolated_109;
+        case "eligible_106":
+          return !simulation.already_isolated_106;
+        default:
+          return true;
+      }
+    })
+    .sort((a, b) => a.sort_order - b.sort_order);
 
-  const tolePrice = sheet_type === "acier" ? 49 : 59;
-  groups.push(
-    makeGroup("Travaux Toiture", [
-      makeLine(
-        `Fournitures de tôles ${sheet_type.toUpperCase()} + accessoires`,
-        surface_m2,
-        tolePrice,
-        2.1
-      ),
-      makeLine("Main d'œuvre changement de tôle", surface_m2, 59, 2.1),
-      makeLine("Livraison tôles et accessoires", 1, 350, 2.1),
-    ])
-  );
-
-  if (needs_framework) {
-    groups.push(
-      makeGroup("Charpente", [
-        makeLine("Achat bois charpente", surface_m2, 30, 2.1),
-        makeLine(
-          "Main d'œuvre confection de charpente",
-          surface_m2,
-          40,
-          2.1
-        ),
-      ])
-    );
+  // Group by devis_group
+  const groupMap = new Map<string, typeof applicable>();
+  for (const item of applicable) {
+    const groupName = item.devis_group || "Autres";
+    if (!groupMap.has(groupName)) {
+      groupMap.set(groupName, []);
+    }
+    groupMap.get(groupName)!.push(item);
   }
 
-  if (!simulation.already_isolated_109) {
-    groups.push(
-      makeGroup("Protection parois opaques BAR-EN-109", [
-        makeLine(
-          "Réduction apports solaires toiture - THERMOBULLE",
-          surface_m2,
-          19,
-          0
-        ),
-        makeLine(
-          "Livraison et mise en place isolant THERMOBULLE",
-          surface_m2,
-          19,
-          2.1
-        ),
-      ])
-    );
+  // Build ItemGroup[] from grouped lines
+  for (const [groupName, items] of groupMap) {
+    const lines = items.map((item) => {
+      let quantity: number;
+      switch (item.quantity_mode) {
+        case "surface":
+          quantity = surface_m2;
+          break;
+        case "fixed":
+          quantity = 1;
+          break;
+        default:
+          quantity = 1;
+          break;
+      }
+      return makeLine(item.name, quantity, item.unit_price_sell, item.tva_rate);
+    });
+    groups.push(makeGroup(groupName, lines));
   }
 
-  if (!simulation.already_isolated_106) {
-    groups.push(
-      makeGroup("Installation rampants BAR-EN-106", [
-        makeLine(
-          "Isolation toiture en pente - URSA MRA 40",
-          surface_m2,
-          19,
-          0
-        ),
-        makeLine(
-          "Livraison et mise en place isolation URSA MRA 40",
-          surface_m2,
-          19,
-          2.1
-        ),
-      ])
-    );
-  }
-
+  // Add complementary products group at the end
   if (products.length > 0) {
     groups.push(
       makeGroup(

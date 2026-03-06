@@ -6,6 +6,7 @@ import type {
   CeeRate,
   CreditRate,
   SalePrice,
+  ComplementaryProduct,
 } from "@/types";
 
 // ─── Types for calculation inputs/outputs ───
@@ -83,6 +84,7 @@ export interface BaremeData {
   mpr_rates: MprRate[];
   cee_rates: CeeRate[];
   credit_rates: CreditRate[];
+  devis_line_items: ComplementaryProduct[];
 }
 
 // ─── Core calculation functions ───
@@ -172,98 +174,60 @@ export function getTargetPricePerM2(
 }
 
 /**
- * Builds the detailed quote line items (as in the DEVIS PDF sheet).
+ * Builds the detailed quote line items from the database catalogue.
  * Each line has its own TVA rate (DOM Martinique: 2.1% reduced, 0% for some isolation).
+ * Lines are filtered by sheet_type_variant and inclusion_condition.
  */
 export function buildLineItems(
   surface: number,
   sheet_type: SheetType,
   needs_framework: boolean,
-  eligibility: EligibilityResult
+  eligibility: EligibilityResult,
+  devisLineItems: ComplementaryProduct[]
 ): QuoteLineItem[] {
-  const items: QuoteLineItem[] = [];
+  // Filter applicable lines
+  const applicable = devisLineItems
+    .filter((item) => item.active)
+    .filter((item) => {
+      // sheet_type_variant: NULL matches all, otherwise must match current sheet_type
+      if (item.sheet_type_variant && item.sheet_type_variant !== sheet_type) {
+        return false;
+      }
+      return true;
+    })
+    .filter((item) => {
+      // inclusion_condition: determines when this line is included
+      switch (item.inclusion_condition) {
+        case "always":
+          return true;
+        case "needs_framework":
+          return needs_framework;
+        case "eligible_109":
+          return eligibility.cee_109 || eligibility.mpr_109;
+        case "eligible_106":
+          return eligibility.cee_106 || eligibility.mpr_106;
+        default:
+          return true;
+      }
+    })
+    .sort((a, b) => a.sort_order - b.sort_order);
 
-  // Prévisite & contrôle
-  items.push(createLineItem("Prévisite & contrôle de chantier", 1, 250, 2.1));
-
-  // Étude technique
-  items.push(
-    createLineItem(
-      "Frais d'étude technique par maître d'œuvre",
-      1,
-      499,
-      2.1
-    )
-  );
-
-  // Tôles
-  const tolePrice = sheet_type === "acier" ? 49 : 59;
-  items.push(
-    createLineItem(
-      `Fournitures de tôles ${sheet_type.toUpperCase()} + accessoires`,
-      surface,
-      tolePrice,
-      2.1
-    )
-  );
-
-  // Main d'œuvre
-  items.push(
-    createLineItem("Main d'œuvre changement de tôle", surface, 59, 2.1)
-  );
-
-  // Livraison
-  items.push(createLineItem("Livraison tôles et accessoires", 1, 350, 2.1));
-
-  // Charpente
-  if (needs_framework) {
-    items.push(createLineItem("Achat bois charpente", surface, 30, 2.1));
-    items.push(
-      createLineItem("Main d'œuvre confection de charpente", surface, 40, 2.1)
-    );
-  }
-
-  // Isolation BAR-EN-109 (protection parois opaques)
-  if (eligibility.cee_109 || eligibility.mpr_109) {
-    items.push(
-      createLineItem(
-        "Réduction apports solaires toiture - THERMOBULLE",
-        surface,
-        19,
-        0
-      )
-    );
-    items.push(
-      createLineItem(
-        "Livraison et mise en place isolant THERMOBULLE",
-        surface,
-        19,
-        2.1
-      )
-    );
-  }
-
-  // Isolation BAR-EN-106 (rampants)
-  if (eligibility.cee_106 || eligibility.mpr_106) {
-    items.push(
-      createLineItem(
-        "Isolation toiture en pente - URSA MRA 40",
-        surface,
-        19,
-        0
-      )
-    );
-    items.push(
-      createLineItem(
-        "Livraison et mise en place isolation URSA MRA 40",
-        surface,
-        19,
-        2.1
-      )
-    );
-  }
-
-  return items;
+  // Build QuoteLineItem[] from filtered catalogue lines
+  return applicable.map((item) => {
+    let quantity: number;
+    switch (item.quantity_mode) {
+      case "surface":
+        quantity = surface;
+        break;
+      case "fixed":
+        quantity = 1;
+        break;
+      default:
+        quantity = 1;
+        break;
+    }
+    return createLineItem(item.name, quantity, item.unit_price_sell, item.tva_rate);
+  });
 }
 
 function createLineItem(
@@ -374,12 +338,13 @@ export function calculateSimulation(
   }
   products_total_ttc = Math.round(products_total_ttc);
 
-  // 6. Build detailed line items
+  // 6. Build detailed line items from catalogue
   const line_items = buildLineItems(
     input.surface_m2,
     input.sheet_type,
     input.needs_framework,
-    eligibility
+    eligibility,
+    baremes.devis_line_items
   );
 
   // 7. Sum of detailed line items

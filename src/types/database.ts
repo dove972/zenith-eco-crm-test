@@ -45,7 +45,15 @@ export type ProductCategory =
   | "securite"
   | "nettoyage"
   | "accessoires"
+  | "toiture"
+  | "main_oeuvre"
+  | "isolation"
+  | "logistique"
+  | "etude"
   | "autre";
+
+export type QuantityMode = "manual" | "fixed" | "surface";
+export type InclusionCondition = "always" | "needs_framework" | "eligible_109" | "eligible_106";
 
 export interface Database {
   public: {
@@ -456,6 +464,12 @@ export interface Database {
           unit_label: string;
           active: boolean;
           sort_order: number;
+          is_devis_line: boolean;
+          devis_line_key: string | null;
+          quantity_mode: QuantityMode;
+          inclusion_condition: InclusionCondition | null;
+          devis_group: string | null;
+          sheet_type_variant: SheetType | null;
           created_at: string;
           updated_at: string;
         };
@@ -469,6 +483,12 @@ export interface Database {
           unit_label?: string;
           active?: boolean;
           sort_order?: number;
+          is_devis_line?: boolean;
+          devis_line_key?: string | null;
+          quantity_mode?: QuantityMode;
+          inclusion_condition?: InclusionCondition | null;
+          devis_group?: string | null;
+          sheet_type_variant?: SheetType | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -481,6 +501,12 @@ export interface Database {
           unit_label?: string;
           active?: boolean;
           sort_order?: number;
+          is_devis_line?: boolean;
+          devis_line_key?: string | null;
+          quantity_mode?: QuantityMode;
+          inclusion_condition?: InclusionCondition | null;
+          devis_group?: string | null;
+          sheet_type_variant?: SheetType | null;
           updated_at?: string;
         };
       };

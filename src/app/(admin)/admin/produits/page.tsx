@@ -26,6 +26,11 @@ const CATEGORY_LABELS: Record<ProductCategory, string> = {
   securite: "Sécurité",
   nettoyage: "Nettoyage",
   accessoires: "Accessoires",
+  toiture: "Toiture",
+  main_oeuvre: "Main d'œuvre",
+  isolation: "Isolation",
+  logistique: "Logistique",
+  etude: "Étude",
   autre: "Autre",
 };
 
@@ -42,12 +47,17 @@ const CATEGORIES: ProductCategory[] = [
   "securite",
   "nettoyage",
   "accessoires",
+  "toiture",
+  "main_oeuvre",
+  "isolation",
+  "logistique",
+  "etude",
   "autre",
 ];
 
 const productSchema = z.object({
   name: z.string().min(1, "Le nom est requis"),
-  category: z.enum(["chauffe_eau", "gouttiere", "faux_plafond", "bois", "electricite", "plomberie", "peinture", "etancheite", "ventilation", "securite", "nettoyage", "accessoires", "autre"]),
+  category: z.enum(["chauffe_eau", "gouttiere", "faux_plafond", "bois", "electricite", "plomberie", "peinture", "etancheite", "ventilation", "securite", "nettoyage", "accessoires", "toiture", "main_oeuvre", "isolation", "logistique", "etude", "autre"]),
   unit_price_sell: z.coerce.number().min(0, "Le prix de vente doit être positif"),
   unit_price_cost: z.coerce.number().min(0, "Le prix coût doit être positif"),
   tva_rate: z.coerce.number().min(0).max(100, "La TVA doit être entre 0 et 100"),
@@ -67,6 +77,12 @@ interface Product {
   unit_label: string;
   active: boolean;
   sort_order: number;
+  is_devis_line: boolean;
+  devis_line_key: string | null;
+  devis_group: string | null;
+  quantity_mode: string;
+  inclusion_condition: string | null;
+  sheet_type_variant: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -79,6 +95,7 @@ export default function ProduitsPage() {
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [togglingId, setTogglingId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<"addons" | "devis_lines">("addons");
 
   const supabase = createClient();
 
@@ -229,6 +246,10 @@ export default function ProduitsPage() {
   }
 
   async function handleDelete(product: Product) {
+    if (product.is_devis_line) {
+      toast.error("Les lignes de devis ne peuvent pas être supprimées");
+      return;
+    }
     if (!confirm(`Supprimer le produit "${product.name}" ?`)) return;
 
     setDeletingId(product.id);
@@ -245,6 +266,10 @@ export default function ProduitsPage() {
     }
     setDeletingId(null);
   }
+
+  const filteredProducts = products.filter((p) =>
+    activeTab === "devis_lines" ? p.is_devis_line : !p.is_devis_line
+  );
 
   function formatPrice(value: number) {
     return new Intl.NumberFormat("fr-FR", {
@@ -266,16 +291,44 @@ export default function ProduitsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">
-            Produits complémentaires
+            Catalogue produits
           </h1>
           <p className="text-muted-foreground">
-            Gérez les produits complémentaires disponibles pour les simulations
+            Gérez les tarifs des lignes de devis et des produits complémentaires
           </p>
         </div>
-        <Button onClick={openAddForm} disabled={showForm}>
-          <Plus className="mr-2 h-4 w-4" />
-          Ajouter un produit
-        </Button>
+        {activeTab === "addons" && (
+          <Button onClick={openAddForm} disabled={showForm}>
+            <Plus className="mr-2 h-4 w-4" />
+            Ajouter un produit
+          </Button>
+        )}
+      </div>
+
+      {/* Onglets */}
+      <div className="flex gap-1 rounded-lg bg-muted p-1">
+        <button
+          type="button"
+          onClick={() => { setActiveTab("devis_lines"); cancelForm(); }}
+          className={`flex-1 rounded-md px-4 py-2 text-sm font-medium transition-colors ${
+            activeTab === "devis_lines"
+              ? "bg-background text-foreground shadow-sm"
+              : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          Lignes de devis ({products.filter((p) => p.is_devis_line).length})
+        </button>
+        <button
+          type="button"
+          onClick={() => { setActiveTab("addons"); cancelForm(); }}
+          className={`flex-1 rounded-md px-4 py-2 text-sm font-medium transition-colors ${
+            activeTab === "addons"
+              ? "bg-background text-foreground shadow-sm"
+              : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          Produits complémentaires ({products.filter((p) => !p.is_devis_line).length})
+        </button>
       </div>
 
       {showForm && (
@@ -423,13 +476,17 @@ export default function ProduitsPage() {
         </Card>
       )}
 
-      {products.length === 0 ? (
+      {filteredProducts.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
             <Package className="h-12 w-12 text-muted-foreground" />
-            <p className="mt-4 text-lg font-medium">Aucun produit</p>
+            <p className="mt-4 text-lg font-medium">
+              {activeTab === "devis_lines" ? "Aucune ligne de devis" : "Aucun produit"}
+            </p>
             <p className="text-sm text-muted-foreground">
-              Ajoutez votre premier produit complémentaire
+              {activeTab === "devis_lines"
+                ? "Les lignes de devis seront disponibles après la migration"
+                : "Ajoutez votre premier produit complémentaire"}
             </p>
           </CardContent>
         </Card>
@@ -442,12 +499,17 @@ export default function ProduitsPage() {
                   <tr className="border-b text-left text-sm text-muted-foreground">
                     <th className="px-4 py-3 font-medium">Produit</th>
                     <th className="px-4 py-3 font-medium">Catégorie</th>
+                    {activeTab === "devis_lines" && (
+                      <th className="px-4 py-3 font-medium">Groupe devis</th>
+                    )}
                     <th className="px-4 py-3 font-medium text-right">
                       Prix vente
                     </th>
-                    <th className="px-4 py-3 font-medium text-right">
-                      Prix coût
-                    </th>
+                    {activeTab === "addons" && (
+                      <th className="px-4 py-3 font-medium text-right">
+                        Prix coût
+                      </th>
+                    )}
                     <th className="px-4 py-3 font-medium text-right">TVA</th>
                     <th className="px-4 py-3 font-medium">Unité</th>
                     <th className="px-4 py-3 font-medium text-center">
@@ -459,7 +521,7 @@ export default function ProduitsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {products.map((product) => (
+                  {filteredProducts.map((product) => (
                     <tr
                       key={product.id}
                       className="border-b last:border-0 hover:bg-muted/50"
@@ -470,12 +532,19 @@ export default function ProduitsPage() {
                           {CATEGORY_LABELS[product.category]}
                         </Badge>
                       </td>
+                      {activeTab === "devis_lines" && (
+                        <td className="px-4 py-3 text-sm text-muted-foreground">
+                          {product.devis_group || "—"}
+                        </td>
+                      )}
                       <td className="px-4 py-3 text-right">
                         {formatPrice(product.unit_price_sell)}
                       </td>
-                      <td className="px-4 py-3 text-right">
-                        {formatPrice(product.unit_price_cost)}
-                      </td>
+                      {activeTab === "addons" && (
+                        <td className="px-4 py-3 text-right">
+                          {formatPrice(product.unit_price_cost)}
+                        </td>
+                      )}
                       <td className="px-4 py-3 text-right">
                         {product.tva_rate}%
                       </td>
@@ -509,18 +578,20 @@ export default function ProduitsPage() {
                           >
                             <Pencil className="h-4 w-4" />
                           </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            disabled={deletingId === product.id}
-                            onClick={() => handleDelete(product)}
-                          >
-                            {deletingId === product.id ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <Trash2 className="h-4 w-4 text-destructive" />
-                            )}
-                          </Button>
+                          {!product.is_devis_line && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              disabled={deletingId === product.id}
+                              onClick={() => handleDelete(product)}
+                            >
+                              {deletingId === product.id ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                              )}
+                            </Button>
+                          )}
                         </div>
                       </td>
                     </tr>
