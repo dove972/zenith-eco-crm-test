@@ -22,6 +22,6 @@ export default async function HomePage() {
   } else if (profile?.role === "manager") {
     redirect("/manager/dashboard");
   } else {
-    redirect("/commercial/simulations");
+    redirect("/commercial/dashboard");
   }
 }
