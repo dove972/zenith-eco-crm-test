@@ -143,7 +143,7 @@ function buildGroups(props: QuotePdfProps): ItemGroup[] {
   const { sheet_type, needs_framework, surface_m2 } = simulation;
   const groups: ItemGroup[] = [];
 
-  // Filter applicable devis line items (same logic as simulationEngine)
+  // Filter by active + sheet_type_variant only (keep all inclusion conditions)
   const applicable = devisLineItems
     .filter((item) => item.active)
     .filter((item) => {
@@ -151,20 +151,6 @@ function buildGroups(props: QuotePdfProps): ItemGroup[] {
         return false;
       }
       return true;
-    })
-    .filter((item) => {
-      switch (item.inclusion_condition) {
-        case "always":
-          return true;
-        case "needs_framework":
-          return needs_framework;
-        case "eligible_109":
-          return !simulation.already_isolated_109;
-        case "eligible_106":
-          return !simulation.already_isolated_106;
-        default:
-          return true;
-      }
     })
     .sort((a, b) => a.sort_order - b.sort_order);
 
@@ -178,20 +164,27 @@ function buildGroups(props: QuotePdfProps): ItemGroup[] {
     groupMap.get(groupName)!.push(item);
   }
 
-  // Build ItemGroup[] from grouped lines
+  // Build ItemGroup[] — items whose inclusion_condition is not met get quantity = 0
   for (const [groupName, items] of groupMap) {
     const lines = items.map((item) => {
-      let quantity: number;
-      switch (item.quantity_mode) {
-        case "surface":
-          quantity = surface_m2;
-          break;
-        case "fixed":
-          quantity = 1;
-          break;
-        default:
-          quantity = 1;
-          break;
+      const conditionMet = (() => {
+        switch (item.inclusion_condition) {
+          case "always":
+            return true;
+          case "needs_framework":
+            return needs_framework;
+          case "eligible_109":
+            return !simulation.already_isolated_109;
+          case "eligible_106":
+            return !simulation.already_isolated_106;
+          default:
+            return true;
+        }
+      })();
+
+      let quantity = 0;
+      if (conditionMet) {
+        quantity = item.quantity_mode === "surface" ? surface_m2 : 1;
       }
       return makeLine(item.name, quantity, item.unit_price_sell, item.tva_rate);
     });

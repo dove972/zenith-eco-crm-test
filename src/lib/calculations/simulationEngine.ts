@@ -185,7 +185,7 @@ export function buildLineItems(
   eligibility: EligibilityResult,
   devisLineItems: ComplementaryProduct[]
 ): QuoteLineItem[] {
-  // Filter applicable lines
+  // Filter by active + sheet_type_variant only (keep all inclusion conditions)
   const applicable = devisLineItems
     .filter((item) => item.active)
     .filter((item) => {
@@ -195,8 +195,11 @@ export function buildLineItems(
       }
       return true;
     })
-    .filter((item) => {
-      // inclusion_condition: determines when this line is included
+    .sort((a, b) => a.sort_order - b.sort_order);
+
+  // Build QuoteLineItem[] — items whose inclusion_condition is not met get quantity = 0
+  return applicable.map((item) => {
+    const conditionMet = (() => {
       switch (item.inclusion_condition) {
         case "always":
           return true;
@@ -209,22 +212,11 @@ export function buildLineItems(
         default:
           return true;
       }
-    })
-    .sort((a, b) => a.sort_order - b.sort_order);
+    })();
 
-  // Build QuoteLineItem[] from filtered catalogue lines
-  return applicable.map((item) => {
-    let quantity: number;
-    switch (item.quantity_mode) {
-      case "surface":
-        quantity = surface;
-        break;
-      case "fixed":
-        quantity = 1;
-        break;
-      default:
-        quantity = 1;
-        break;
+    let quantity = 0;
+    if (conditionMet) {
+      quantity = item.quantity_mode === "surface" ? surface : 1;
     }
     return createLineItem(item.name, quantity, item.unit_price_sell, item.tva_rate);
   });

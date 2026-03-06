@@ -335,10 +335,14 @@ describe("buildLineItems (data-driven)", () => {
   const allEligible = { mpr_106: true, mpr_109: true, cee_106: true, cee_109: true };
   const noneEligible = { mpr_106: false, mpr_109: false, cee_106: false, cee_109: false };
 
-  it("returns 9 items for ACIER without framework, all eligible", () => {
+  it("returns 11 items for ACIER without framework, all eligible (charpente qty=0)", () => {
     const items = buildLineItems(150, "acier", false, allEligible, testDevisLineItems);
-    // prévisite(1) + étude(1) + tôle ACIER(1) + MO tôle(1) + livraison(1) + 109(2) + 106(2) = 9
-    expect(items).toHaveLength(9);
+    // All 11 ACIER-compatible items present (ALU tôle excluded by sheet_type_variant)
+    // 2 charpente items have qty=0 because needs_framework=false
+    expect(items).toHaveLength(11);
+    const charpente = items.filter((i) => i.label.includes("charpente"));
+    expect(charpente).toHaveLength(2);
+    charpente.forEach((c) => expect(c.quantity).toBe(0));
   });
 
   it("returns 11 items for ACIER with framework, all eligible", () => {
@@ -362,10 +366,14 @@ describe("buildLineItems (data-driven)", () => {
     expect(tole!.unit_price).toBe(59);
   });
 
-  it("excludes framework lines when needs_framework is false", () => {
+  it("sets quantity=0 for framework lines when needs_framework is false", () => {
     const items = buildLineItems(150, "acier", false, allEligible, testDevisLineItems);
     const charpente = items.filter((i) => i.label.includes("charpente"));
-    expect(charpente).toHaveLength(0);
+    expect(charpente).toHaveLength(2);
+    charpente.forEach((c) => {
+      expect(c.quantity).toBe(0);
+      expect(c.ttc).toBe(0);
+    });
   });
 
   it("includes framework lines when needs_framework is true", () => {
@@ -374,10 +382,15 @@ describe("buildLineItems (data-driven)", () => {
     expect(charpente).toHaveLength(2);
   });
 
-  it("excludes isolation lines when not eligible", () => {
+  it("sets quantity=0 for isolation lines when not eligible", () => {
     const items = buildLineItems(150, "acier", false, noneEligible, testDevisLineItems);
-    // Only: prévisite + étude + tôle ACIER + MO tôle + livraison = 5
-    expect(items).toHaveLength(5);
+    // All 11 ACIER-compatible items present, but isolation(4) + charpente(2) have qty=0
+    expect(items).toHaveLength(11);
+    const isolation = items.filter((i) => i.label.includes("isolant") || i.label.includes("Réduction") || i.label.includes("Isolation") || i.label.includes("THERMOBULLE") || i.label.includes("URSA"));
+    isolation.forEach((iso) => {
+      expect(iso.quantity).toBe(0);
+      expect(iso.ttc).toBe(0);
+    });
   });
 
   it("uses fixed quantity (1) for fixed items", () => {
