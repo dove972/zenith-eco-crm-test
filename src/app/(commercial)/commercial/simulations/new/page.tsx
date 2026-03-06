@@ -388,10 +388,23 @@ export default function NewSimulationPage() {
       {step === 4 && baremes && (() => {
         const result = computeResult();
         if (!result) return null;
+        const selectedProductsInfo = wizardData.project.products
+          .filter((p) => p.quantity > 0)
+          .map((p) => {
+            const product = products.find((prod) => prod.id === p.product_id);
+            return {
+              name: product?.name ?? "Produit",
+              quantity: p.quantity,
+              unit_price_sell: product?.unit_price_sell ?? 0,
+              tva_rate: product?.tva_rate ?? 0,
+              unit_label: product?.unit_label,
+            };
+          });
         return (
           <StepResult
             result={result}
             creditRates={baremes.credit_rates}
+            selectedProducts={selectedProductsInfo}
             onBack={handleBack}
             onSave={handleSave}
             saving={saving}

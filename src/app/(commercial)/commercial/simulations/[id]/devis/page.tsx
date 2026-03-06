@@ -489,45 +489,74 @@ export default function DevisPage() {
                       Qté
                     </th>
                     <th className="px-3 py-2 text-right font-medium">
+                      PU HT
+                    </th>
+                    <th className="px-3 py-2 text-right font-medium">
+                      TVA
+                    </th>
+                    <th className="px-3 py-2 text-right font-medium">
                       Total HT
                     </th>
                   </tr>
                 </thead>
                 <tbody>
-                  <tr className="border-b bg-[#FFF8F0]">
-                    <td className="px-3 py-2 font-medium">
-                      Toiture {simulation.sheet_type.toUpperCase()} —{" "}
-                      {simulation.surface_m2} m²
-                      {simulation.needs_framework && " + Charpente"}
-                    </td>
-                    <td className="px-3 py-2 text-right">
-                      {simulation.surface_m2} m²
-                    </td>
-                    <td className="px-3 py-2 text-right font-semibold">
-                      {formatCurrency(
-                        simulation.total_ht -
-                          simProducts.reduce(
-                            (s, p) =>
-                              s +
-                              p.unit_price * p.quantity,
-                            0
-                          )
-                      )}
-                    </td>
-                  </tr>
-                  {simProducts.map((sp) => (
-                    <tr key={sp.id} className="border-b">
-                      <td className="px-3 py-2">
-                        {sp.product?.name ?? "Produit"}
-                      </td>
-                      <td className="px-3 py-2 text-right">
-                        {sp.quantity}
-                      </td>
-                      <td className="px-3 py-2 text-right font-semibold">
-                        {formatCurrency(sp.total_price)}
-                      </td>
-                    </tr>
-                  ))}
+                  {/* Ligne Toiture */}
+                  {(() => {
+                    const productsHT = simProducts.reduce((s, p) => {
+                      const tvaRate = p.product?.tva_rate ?? 0;
+                      return s + (p.unit_price * p.quantity) / (1 + tvaRate / 100);
+                    }, 0);
+                    const toitureHT = simulation.total_ht - productsHT;
+                    const toiturePuHT = simulation.surface_m2 > 0
+                      ? toitureHT / simulation.surface_m2
+                      : 0;
+                    return (
+                      <tr className="border-b bg-[#FFF8F0]">
+                        <td className="px-3 py-2 font-medium">
+                          Toiture {simulation.sheet_type.toUpperCase()} —{" "}
+                          {simulation.surface_m2} m²
+                          {simulation.needs_framework && " + Charpente"}
+                        </td>
+                        <td className="px-3 py-2 text-right">
+                          {simulation.surface_m2} m²
+                        </td>
+                        <td className="px-3 py-2 text-right">
+                          {formatCurrency(toiturePuHT)}
+                        </td>
+                        <td className="px-3 py-2 text-right text-muted-foreground">
+                          2,1%
+                        </td>
+                        <td className="px-3 py-2 text-right font-semibold">
+                          {formatCurrency(toitureHT)}
+                        </td>
+                      </tr>
+                    );
+                  })()}
+                  {/* Produits complémentaires */}
+                  {simProducts.map((sp) => {
+                    const tvaRate = sp.product?.tva_rate ?? 0;
+                    const totalHT = sp.total_price / (1 + tvaRate / 100);
+                    const unitHT = sp.unit_price / (1 + tvaRate / 100);
+                    return (
+                      <tr key={sp.id} className="border-b">
+                        <td className="px-3 py-2">
+                          {sp.product?.name ?? "Produit"}
+                        </td>
+                        <td className="px-3 py-2 text-right">
+                          {sp.quantity}{sp.product?.unit_label ? ` ${sp.product.unit_label}` : ""}
+                        </td>
+                        <td className="px-3 py-2 text-right">
+                          {formatCurrency(unitHT)}
+                        </td>
+                        <td className="px-3 py-2 text-right text-muted-foreground">
+                          {tvaRate}%
+                        </td>
+                        <td className="px-3 py-2 text-right font-semibold">
+                          {formatCurrency(totalHT)}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

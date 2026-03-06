@@ -13,6 +13,7 @@ import {
   Loader2,
   CreditCard,
   Gift,
+  Package,
 } from "lucide-react";
 
 interface PaymentEntry {
@@ -20,9 +21,18 @@ interface PaymentEntry {
   amount: number;
 }
 
+interface SelectedProductInfo {
+  name: string;
+  quantity: number;
+  unit_price_sell: number;
+  tva_rate: number;
+  unit_label?: string;
+}
+
 interface StepResultProps {
   result: SimulationResult;
   creditRates: CreditRate[];
+  selectedProducts?: SelectedProductInfo[];
   onBack: () => void;
   onSave: (financing: {
     payment_mode: string;
@@ -49,6 +59,7 @@ const DURATION_OPTIONS = [
 export default function StepResult({
   result,
   creditRates,
+  selectedProducts = [],
   onBack,
   onSave,
   saving,
@@ -226,6 +237,50 @@ export default function StepResult({
               </span>
               <span className="font-extrabold text-[#43A047]">
                 {formatCurrency(totalPrimes)}
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* PRODUITS COMPLÉMENTAIRES */}
+      {selectedProducts.length > 0 && (
+        <div className="rounded-[14px] bg-white shadow-card overflow-hidden">
+          <div className="px-5 py-3.5 border-b border-[#F5F5F5] flex items-center gap-2">
+            <Package className="h-4 w-4 text-[#FA7800]" />
+            <p className="text-sm font-bold text-[#464646]">
+              Produits complémentaires
+            </p>
+          </div>
+          <div className="px-5 py-4 space-y-2">
+            {selectedProducts.map((prod, i) => {
+              const lineTotal = prod.quantity * prod.unit_price_sell;
+              return (
+                <div
+                  key={i}
+                  className="flex items-center justify-between text-sm"
+                >
+                  <span className="text-[#888]">
+                    {prod.name}
+                    {prod.quantity > 1 && (
+                      <span className="text-[#aaa]">
+                        {" "}× {prod.quantity}
+                        {prod.unit_label ? ` ${prod.unit_label}` : ""}
+                      </span>
+                    )}
+                  </span>
+                  <span className="font-semibold text-[#464646]">
+                    {formatCurrency(lineTotal)}
+                  </span>
+                </div>
+              );
+            })}
+            <div className="flex items-center justify-between text-sm border-t border-[#F5F5F5] pt-2">
+              <span className="font-bold text-[#464646]">
+                Total produits TTC
+              </span>
+              <span className="font-extrabold text-[#464646]">
+                {formatCurrency(result.products_total_ttc)}
               </span>
             </div>
           </div>
