@@ -1,20 +1,11 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "@/lib/supabase/server";
 import { sendInvitationEmail } from "@/lib/email";
 
 export async function POST(request: Request) {
   try {
-    // Vérifier l'authentification
-    const authHeader = request.headers.get("authorization");
-    if (!authHeader) {
-      return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
-    }
-
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      { global: { headers: { Authorization: authHeader } } }
-    );
+    // Vérifier l'authentification via le client SSR (cookies de session)
+    const supabase = await createClient();
 
     const {
       data: { user },
